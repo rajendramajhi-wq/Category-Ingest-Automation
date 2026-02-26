@@ -1,0 +1,16 @@
+/logs
+/myenv
+/out
+/__pycache__
+/backups
+/rough
+
+
+*.log
+# *.txt
+*.json
+*.mongosh
+*.env
+*.vscode/
+*.js
+*.xlsx
