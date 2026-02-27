@@ -1,1 +1,8 @@
-# pip install pandas openpyxl typer pydantic openai fastapi uvicorn python-multipart pandas
+pandas 
+openpyxl 
+typer 
+pydantic 
+openai 
+fastapi 
+uvicorn 
+python-multipart
