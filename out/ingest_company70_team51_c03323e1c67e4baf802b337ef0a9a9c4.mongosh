@@ -1,0 +1,957 @@
+use companyId_70_RA;
+
+// ensure required collections exist
+const required = ["live_calls", "sessions", "team_categories", "team_configs"];
+const existing = db.getCollectionNames();
+for (const c of required) { if (!existing.includes(c)) db.createCollection(c); }
+
+// enforce uniqueness on (company_id, team_id)
+db.team_configs.createIndex({company_id:1, team_id:1}, {unique:true});
+db.team_categories.createIndex({company_id:1, team_id:1}, {unique:true});
+
+// backup existing docs before overwrite
+if (!db.getCollectionNames().includes("team_configs_backup")) db.createCollection("team_configs_backup");
+if (!db.getCollectionNames().includes("team_categories_backup")) db.createCollection("team_categories_backup");
+const filt = {"company_id": "70", "team_id": "51"};
+const oldTC = db.team_configs.findOne(filt);
+if (oldTC) { oldTC.backed_up_at = new Date(); db.team_configs_backup.insertOne(oldTC); }
+const oldTCat = db.team_categories.findOne(filt);
+if (oldTCat) { oldTCat.backed_up_at = new Date(); db.team_categories_backup.insertOne(oldTCat); }
+
+// upsert team_configs + team_categories
+const teamConfigs = {
+  "company_id": "70",
+  "team_id": "51",
+  "categories": {
+    "closing_next_steps": {
+      "name": "Closing & Next Steps",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Ensures a clear recap, agreement on next steps, and a scheduled follow-up.",
+      "total_score": 8,
+      "subcategories": {
+        "summary_recap": {
+          "name": "Summary Recap",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Summarizes key product fit and value points.",
+          "required": true,
+          "evaluation_criteria": [
+            "Concise restatement of customer needs and product fit",
+            "Highlights top 1–2 relevant value points",
+            "Checks understanding/approval of the recap",
+            "Uses phrase like: To summarise?based on your requirement, we recommend our Prime Home Loan with flexible tenure and transparent terms."
+          ],
+          "category_name": "Closing & Next Steps",
+          "meta": {
+            "winning_pitch_phrases": [
+              "To summarise?based on your requirement, we recommend our Prime Home Loan with flexible tenure and transparent terms."
+            ],
+            "prompt": "To summarise?based on your requirement, we recommend our Prime Home Loan with flexible tenure and transparent terms."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "soft_commitment": {
+          "name": "Soft Commitment",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Secures agreement for next step (eligibility/doc sharing).",
+          "required": true,
+          "evaluation_criteria": [
+            "Asks permission to proceed with eligibility/doc step",
+            "Secures an explicit yes/agreement",
+            "Addresses hesitation with brief reassurance",
+            "Uses phrase like: Shall I help you get started with a quick eligibility check?"
+          ],
+          "category_name": "Closing & Next Steps",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Shall I help you get started with a quick eligibility check?"
+            ],
+            "prompt": "Shall I help you get started with a quick eligibility check?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "next_action_planning": {
+          "name": "Next Action Planning",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Sets a clear follow-up timeline.",
+          "required": true,
+          "evaluation_criteria": [
+            "Proposes a specific date/time and channel for follow-up",
+            "Confirms mutual availability and owner of next step",
+            "States what will be shared before next contact (e.g., document list)",
+            "Uses phrase like: I?ll share the document list and connect tomorrow at 4 PM. Does that work for you?"
+          ],
+          "category_name": "Closing & Next Steps",
+          "meta": {
+            "winning_pitch_phrases": [
+              "I?ll share the document list and connect tomorrow at 4 PM. Does that work for you?"
+            ],
+            "prompt": "I?ll share the document list and connect tomorrow at 4 PM. Does that work for you?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "compliance_mandatory_disclosures": {
+      "name": "Compliance & Mandatory Disclosures",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Ensures the agent delivers mandatory disclosures accurately, covering KYC/documentation, Fair Practice Code and risks, and alignment with regulatory and company policies.",
+      "total_score": 12,
+      "subcategories": {
+        "kyc_documentation_requirements": {
+          "name": "KYC & Documentation Requirements",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Explains required KYC, income, and property docs.",
+          "required": true,
+          "evaluation_criteria": [
+            "Lists KYC, income, and property documents required",
+            "Gives acceptable examples (PAN/Aadhaar, payslips/bank statements, title papers)",
+            "Clarifies submission method and timelines",
+            "Confirms customer understanding and readiness to provide",
+            "Uses phrase like: We follow RBI and NHB norms, so we will need your KYC, income proof, and property documents."
+          ],
+          "category_name": "Compliance & Mandatory Disclosures",
+          "meta": {
+            "winning_pitch_phrases": [
+              "We follow RBI and NHB norms, so we will need your KYC, income proof, and property documents."
+            ],
+            "prompt": "We follow RBI and NHB norms, so we will need your KYC, income proof, and property documents."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "fair_practice_code_risk_explanation": {
+          "name": "Fair Practice Code + Risk Explanation",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Explains transparency, grievance redressal, risk factors.",
+          "required": true,
+          "evaluation_criteria": [
+            "States Fair Practice Code and commitment to transparency",
+            "Explains key risks (rates/charges, repayment impact) clearly",
+            "Shares grievance redressal steps and contact details",
+            "Avoids guarantees; provides balanced, compliant info",
+            "Uses phrase like: Our Fair Practice Code ensures full transparency, and I?ll also share our grievance redressal process."
+          ],
+          "category_name": "Compliance & Mandatory Disclosures",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Our Fair Practice Code ensures full transparency, and I?ll also share our grievance redressal process."
+            ],
+            "prompt": "Our Fair Practice Code ensures full transparency, and I?ll also share our grievance redressal process."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "regulatory_policy_alignment": {
+          "name": "Regulatory/Policy Alignment",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Communicates MITC, privacy policy, repayment schedule importance.",
+          "required": true,
+          "evaluation_criteria": [
+            "Mentions and shares MITC or commits to send it",
+            "Highlights privacy policy and obtains consent for data use",
+            "Explains repayment schedule and borrower obligations",
+            "References adherence to regulator and company policies",
+            "Uses phrase like: All your information is handled as per ABHFL?s regulatory and privacy policies."
+          ],
+          "category_name": "Compliance & Mandatory Disclosures",
+          "meta": {
+            "winning_pitch_phrases": [
+              "All your information is handled as per ABHFL?s regulatory and privacy policies."
+            ],
+            "prompt": "All your information is handled as per ABHFL?s regulatory and privacy policies."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "conversation_quality": {
+      "name": "Conversation Quality",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Assesses how clearly the agent listens, explains, and structures the call with confident, smooth flow.",
+      "total_score": 8,
+      "subcategories": {
+        "clarity_listening": {
+          "name": "Clarity & Listening",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Agent listens actively and explains concepts simply.",
+          "required": true,
+          "evaluation_criteria": [
+            "Listens without interrupting; acknowledges key points.",
+            "Paraphrases customer needs to confirm understanding.",
+            "Explains concepts in plain language; avoids jargon.",
+            "Uses phrase like: I?m here to guide you?let me re-explain that in simpler terms."
+          ],
+          "category_name": "Conversation Quality",
+          "meta": {
+            "winning_pitch_phrases": [
+              "I?m here to guide you?let me re-explain that in simpler terms."
+            ],
+            "prompt": "I?m here to guide you?let me re-explain that in simpler terms."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "structured_flow_confidence": {
+          "name": "Structured Flow & Confidence",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Smooth conversation flow with confidence and clarity.",
+          "required": true,
+          "evaluation_criteria": [
+            "Sets a clear agenda and outcome at start.",
+            "Guides step by step in logical order.",
+            "Uses smooth transitions; avoids rambling or backtracking.",
+            "Speaks with confident, calm tone and steady pace.",
+            "Uses phrase like: Great, let?s go step by step so everything is clear."
+          ],
+          "category_name": "Conversation Quality",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Great, let?s go step by step so everything is clear."
+            ],
+            "prompt": "Great, let?s go step by step so everything is clear."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "customer_discovery_qualification": {
+      "name": "Customer Discovery & Qualification",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Evaluates how effectively the agent discovers the applicant’s profile, purpose, property, finances, and desired loan terms to qualify the lead.",
+      "total_score": 18,
+      "subcategories": {
+        "applicant_profile_understanding": {
+          "name": "Applicant Profile Understanding",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Captures occupation, income, stability, credit behavior.",
+          "required": true,
+          "evaluation_criteria": [
+            "Confirms occupation/employment type and employer/business nature",
+            "Captures monthly income range and income proof type",
+            "Checks stability: job tenure or years in business",
+            "Probes credit behavior/history (past loans, cards, bureau consent)",
+            "Uses phrase like: To check your eligibility, may I confirm your occupation and monthly income range?"
+          ],
+          "category_name": "Customer Discovery & Qualification",
+          "meta": {
+            "winning_pitch_phrases": [
+              "To check your eligibility, may I confirm your occupation and monthly income range?"
+            ],
+            "prompt": "To check your eligibility, may I confirm your occupation and monthly income range?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "loan_purpose_identification": {
+          "name": "Loan Purpose Identification",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Identifies correct ABHFL category: Home Loan/LAP/Micro LAP/Construction/Micro CF/BT/PMAY.",
+          "required": true,
+          "evaluation_criteria": [
+            "Identifies correct product: Home Loan/LAP/Micro LAP/Construction/BT/PMAY",
+            "Clarifies end-use (self-occupied vs investment) and need (purchase/construct/BT)",
+            "Confirms stage/timeline relevant to purpose",
+            "Uses phrase like: Are you planning to buy a ready home, construct on a plot, or looking for a balance transfer?"
+          ],
+          "category_name": "Customer Discovery & Qualification",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Are you planning to buy a ready home, construct on a plot, or looking for a balance transfer?"
+            ],
+            "prompt": "Are you planning to buy a ready home, construct on a plot, or looking for a balance transfer?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "property_details": {
+          "name": "Property Details",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Captures location, builder, readiness, LAP property ownership.",
+          "required": true,
+          "evaluation_criteria": [
+            "Captures property location (city/area) and pincode",
+            "Notes builder/developer name and project approvals/status",
+            "Confirms property type and readiness/possession timeline",
+            "For LAP, verifies ownership/title and co-owners",
+            "Uses phrase like: Is the property ready for possession or under construction, and which location is it in?"
+          ],
+          "category_name": "Customer Discovery & Qualification",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Is the property ready for possession or under construction, and which location is it in?"
+            ],
+            "prompt": "Is the property ready for possession or under construction, and which location is it in?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "financial_capacity_obligations": {
+          "name": "Financial Capacity & Obligations",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Captures FOIR, existing loans, repayment comfort.",
+          "required": true,
+          "evaluation_criteria": [
+            "Captures gross/net monthly income and variable components",
+            "Lists existing EMIs/credit cards to estimate obligations",
+            "Assesses tentative FOIR/affordability",
+            "Confirms repayment comfort and preferred EMI date/mode",
+            "Uses phrase like: This helps us estimate your EMI affordability and ensure the repayment schedule suits your monthly flow."
+          ],
+          "category_name": "Customer Discovery & Qualification",
+          "meta": {
+            "winning_pitch_phrases": [
+              "This helps us estimate your EMI affordability and ensure the repayment schedule suits your monthly flow."
+            ],
+            "prompt": "This helps us estimate your EMI affordability and ensure the repayment schedule suits your monthly flow."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "loan_amount_tenure_expectation": {
+          "name": "Loan Amount & Tenure Expectation",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Understands amount and tenure preference.",
+          "required": true,
+          "evaluation_criteria": [
+            "Asks desired loan amount and any purpose-wise split",
+            "Discusses preferred tenure and EMI vs tenure trade-off",
+            "Checks expected EMI comfort and rate sensitivity",
+            "Aligns amount with LTV/valuation and eligibility estimate",
+            "Uses phrase like: What loan amount are you considering, and do you prefer shorter EMIs or a longer tenure?"
+          ],
+          "category_name": "Customer Discovery & Qualification",
+          "meta": {
+            "winning_pitch_phrases": [
+              "What loan amount are you considering, and do you prefer shorter EMIs or a longer tenure?"
+            ],
+            "prompt": "What loan amount are you considering, and do you prefer shorter EMIs or a longer tenure?"
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "greeting_professionalism": {
+      "name": "Greeting & Professionalism",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Ensures a clear, courteous opening that aligns with ABHFL standards, sets expectations, and maintains professional, customer-first conduct.",
+      "total_score": 10,
+      "subcategories": {
+        "agent_introduction": {
+          "name": "Agent Introduction",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Agent introduces themselves with ABHFL identity, mentions purpose clearly, builds trust.",
+          "required": true,
+          "evaluation_criteria": [
+            "States full name and ABHFL identity in the opening line",
+            "Clearly states the call purpose within the first 30 seconds",
+            "Builds trust with a brief value statement",
+            "Uses phrase like: Good morning! I?m [Name] from Aditya Birla Housing Finance Limited. I?m here to understand your requirement and guide you to the right home finance solution."
+          ],
+          "category_name": "Greeting & Professionalism",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Good morning! I?m [Name] from Aditya Birla Housing Finance Limited. I?m here to understand your requirement and guide you to the right home finance solution."
+            ],
+            "prompt": "Good morning! I?m [Name] from Aditya Birla Housing Finance Limited. I?m here to understand your requirement and guide you to the right home finance solution."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "agenda_setting": {
+          "name": "Agenda Setting",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Agent confirms time availability and sets a clear agenda.",
+          "required": true,
+          "evaluation_criteria": [
+            "Confirms if this is a good time and mentions expected duration",
+            "Outlines the agenda: understand needs, explain options, next steps",
+            "Seeks explicit consent to proceed",
+            "Uses phrase like: If you have about 10 minutes, I?ll quickly understand your requirement and explain the suitable ABHFL products."
+          ],
+          "category_name": "Greeting & Professionalism",
+          "meta": {
+            "winning_pitch_phrases": [
+              "If you have about 10 minutes, I?ll quickly understand your requirement and explain the suitable ABHFL products."
+            ],
+            "prompt": "If you have about 10 minutes, I?ll quickly understand your requirement and explain the suitable ABHFL products."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "professional_tone_conduct": {
+          "name": "Professional Tone & Conduct",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Respectful, warm, ABHFL-aligned tone.",
+          "required": true,
+          "evaluation_criteria": [
+            "Maintains warm, respectful, patient tone; avoids slang or pressure",
+            "Shows active listening and acknowledges customer inputs",
+            "Keeps language ABHFL-aligned and compliant; avoids overpromises",
+            "Uses phrase like: Please feel free to stop me anytime. I want this discussion to be fully comfortable for you."
+          ],
+          "category_name": "Greeting & Professionalism",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Please feel free to stop me anytime. I want this discussion to be fully comfortable for you."
+            ],
+            "prompt": "Please feel free to stop me anytime. I want this discussion to be fully comfortable for you."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "objection_handling": {
+      "name": "Objection Handling",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Resolves objections with empathy and clear solutions; quantifies options; explains process and timelines; and positions ABHFL strengths without negative selling.",
+      "total_score": 11,
+      "subcategories": {
+        "rate_or_emi_concerns": {
+          "name": "Rate or EMI Concerns",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Addresses rate/EMI discomfort and offers alternatives.",
+          "required": true,
+          "evaluation_criteria": [
+            "Acknowledges and probes the specific rate/EMI concern",
+            "Explains rate/EMI impact and options briefly",
+            "Offers a concrete alternative with numbers (e.g., tenure change)",
+            "Uses phrase like: We periodically review rates, and we can also explore a tenure option to bring the EMI into your comfort zone."
+          ],
+          "category_name": "Objection Handling",
+          "meta": {
+            "winning_pitch_phrases": [
+              "We periodically review rates, and we can also explore a tenure option to bring the EMI into your comfort zone."
+            ],
+            "prompt": "We periodically review rates, and we can also explore a tenure option to bring the EMI into your comfort zone."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "documentation_or_process_fear": {
+          "name": "Documentation or Process Fear",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Clarifies steps, timelines, support.",
+          "required": true,
+          "evaluation_criteria": [
+            "Identifies exact process or document worries",
+            "Outlines clear step-by-step process and typical timelines",
+            "Assures hands-on support (pickup, checklist, follow-ups)",
+            "Uses phrase like: Our typical processing time is 10?15 days, and we assist you throughout?from document pickup to approval."
+          ],
+          "category_name": "Objection Handling",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Our typical processing time is 10?15 days, and we assist you throughout?from document pickup to approval."
+            ],
+            "prompt": "Our typical processing time is 10?15 days, and we assist you throughout?from document pickup to approval."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "competitor_comparisons": {
+          "name": "Competitor Comparisons",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Positions ABHFL strengths without negative selling.",
+          "required": true,
+          "evaluation_criteria": [
+            "Asks what matters to the customer before comparing",
+            "Highlights ABHFL strengths with brief proof points",
+            "Avoids negative remarks about competitors; stays factual",
+            "Uses phrase like: With ABHFL, you get strong post-sales support and transparent policies?these help many customers choose us."
+          ],
+          "category_name": "Objection Handling",
+          "meta": {
+            "winning_pitch_phrases": [
+              "With ABHFL, you get strong post-sales support and transparent policies?these help many customers choose us."
+            ],
+            "prompt": "With ABHFL, you get strong post-sales support and transparent policies?these help many customers choose us."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "pitch_content_accuracy": {
+      "name": "Pitch Content Accuracy",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Ensures the pitch gives correct, transparent details on rates, charges, repayment structuring, and digital journey using concrete examples and approved phrases.",
+      "total_score": 13,
+      "subcategories": {
+        "interest_rate_transparency": {
+          "name": "Interest Rate Transparency",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Explains floating rate benchmark structure & risk factors.",
+          "required": true,
+          "evaluation_criteria": [
+            "States rate is floating and linked to ABHFL benchmark.",
+            "Explains reset frequency and that EMI/tenure may change with rate moves.",
+            "Clarifies spread/margin and factors affecting final rate (credit score, LTV).",
+            "Uses phrase like: Our home loan interest rate is linked to the ABHFL benchmark and may vary based on market conditions."
+          ],
+          "category_name": "Pitch Content Accuracy",
+          "meta": {
+            "winning_pitch_phrases": [
+              "Our home loan interest rate is linked to the ABHFL benchmark and may vary based on market conditions."
+            ],
+            "prompt": "Our home loan interest rate is linked to the ABHFL benchmark and may vary based on market conditions."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "charges_mitc": {
+          "name": "Charges & MITC",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Discloses processing fee, penalties, prepayment rules, MITC.",
+          "required": true,
+          "evaluation_criteria": [
+            "Discloses processing fee, taxes, and when charged.",
+            "Specifies prepayment/foreclosure rules and applicable charges.",
+            "Mentions late payment, bounce, valuation/legal, and other fees.",
+            "Commits to share MITC and obtain acknowledgment.",
+            "Uses phrase like: I?ll share the MITC document so all charges and terms are fully transparent."
+          ],
+          "category_name": "Pitch Content Accuracy",
+          "meta": {
+            "winning_pitch_phrases": [
+              "I?ll share the MITC document so all charges and terms are fully transparent."
+            ],
+            "prompt": "I?ll share the MITC document so all charges and terms are fully transparent."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "emi_tenure_structuring": {
+          "name": "EMI & Tenure Structuring",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Provides EMI examples or calculator results.",
+          "required": true,
+          "evaluation_criteria": [
+            "Provides EMI example using loan amount, tenure, and indicative rate.",
+            "Uses calculator results or shares a quote/screenshot.",
+            "Explains trade-off between lower EMI vs shorter tenure.",
+            "Shows impact of part-prepayment on EMI/tenure.",
+            "Uses phrase like: For a ?30 lakh loan over 20 years, your EMI will be approximately ?____."
+          ],
+          "category_name": "Pitch Content Accuracy",
+          "meta": {
+            "winning_pitch_phrases": [
+              "For a ?30 lakh loan over 20 years, your EMI will be approximately ?____."
+            ],
+            "prompt": "For a ?30 lakh loan over 20 years, your EMI will be approximately ?____."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "digital_tools_customer_journey": {
+          "name": "Digital Tools & Customer Journey",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Mentions calculators, online forms, digital services.",
+          "required": true,
+          "evaluation_criteria": [
+            "Mentions online eligibility check and digital application flow.",
+            "Guides on e-KYC, document upload, and real-time status tracking.",
+            "Sends official links via SMS/email and offers walkthrough.",
+            "Sets expectations on TAT and next steps to sanction/disbursal.",
+            "Uses phrase like: You can check your eligibility instantly using ABHFL?s online calculator and even start your application digitally."
+          ],
+          "category_name": "Pitch Content Accuracy",
+          "meta": {
+            "winning_pitch_phrases": [
+              "You can check your eligibility instantly using ABHFL?s online calculator and even start your application digitally."
+            ],
+            "prompt": "You can check your eligibility instantly using ABHFL?s online calculator and even start your application digitally."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    },
+    "product_mapping_pitch": {
+      "name": "Product Mapping & Pitch",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Assesses customer needs and maps them to the right ABHFL product; delivers clear, benefit-led pitch with process, eligibility, and documentation clarity.",
+      "total_score": 20,
+      "subcategories": {
+        "home_loan_product_mapping": {
+          "name": "Home Loan Product Mapping",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Maps customer need to specific ABHFL variants.",
+          "required": true,
+          "evaluation_criteria": [
+            "Probes need (purpose, amount, tenure, property type, income).",
+            "Recommends a specific ABHFL home loan variant with reason.",
+            "Highlights key features relevant to need (tenure/rate/LTV/fees).",
+            "Confirms customer fit and outlines next steps.",
+            "Uses phrase like: For your requirement, our Prime Home Loan offers the right flexibility with tenure up to 30 years."
+          ],
+          "category_name": "Product Mapping & Pitch",
+          "meta": {
+            "winning_pitch_phrases": [
+              "For your requirement, our Prime Home Loan offers the right flexibility with tenure up to 30 years."
+            ],
+            "prompt": "For your requirement, our Prime Home Loan offers the right flexibility with tenure up to 30 years."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "lap_micro_lap_suitability": {
+          "name": "LAP / Micro LAP Suitability",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Identifies LAP/Micro LAP fit for personal or business funding.",
+          "required": true,
+          "evaluation_criteria": [
+            "Asks funding purpose and property ownership details.",
+            "Checks income profile and repayment capacity.",
+            "Positions LAP vs Micro LAP with simple eligibility/limit difference.",
+            "Mentions key terms (LTV, tenure, speed) and collateral risk.",
+            "Uses phrase like: If you wish to raise funds without selling your property, our Micro LAP option is ideal and offers quick approval."
+          ],
+          "category_name": "Product Mapping & Pitch",
+          "meta": {
+            "winning_pitch_phrases": [
+              "If you wish to raise funds without selling your property, our Micro LAP option is ideal and offers quick approval."
+            ],
+            "prompt": "If you wish to raise funds without selling your property, our Micro LAP option is ideal and offers quick approval."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "construction_finance_micro_cf_mapping": {
+          "name": "Construction Finance / Micro CF Mapping",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Suggests correct funding option for construction-related needs.",
+          "required": true,
+          "evaluation_criteria": [
+            "Assesses project type, stage, budget, and approvals.",
+            "Maps to Construction Finance vs Micro CF based on ticket size/need.",
+            "Explains stage-wise disbursement and technical/legal checks.",
+            "Aligns timelines and documentation (plans, approvals, estimates).",
+            "Uses phrase like: For your independent house construction, ABHFL?s Micro Construction Finance solution provides stage-wise disbursement."
+          ],
+          "category_name": "Product Mapping & Pitch",
+          "meta": {
+            "winning_pitch_phrases": [
+              "For your independent house construction, ABHFL?s Micro Construction Finance solution provides stage-wise disbursement."
+            ],
+            "prompt": "For your independent house construction, ABHFL?s Micro Construction Finance solution provides stage-wise disbursement."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "balance_transfer_recommendation": {
+          "name": "Balance Transfer Recommendation",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Explains Priority BT and Express BT benefits.",
+          "required": true,
+          "evaluation_criteria": [
+            "Captures current loan details (rate, EMI, balance, tenure, charges).",
+            "Quantifies savings and recommends Priority BT vs Express BT with reason.",
+            "Explains BT process, TAT, and required documents.",
+            "Sets expectations on fees, valuation, and conditions.",
+            "Uses phrase like: With our Express Balance Transfer, we can shift your existing loan smoothly and help you reduce your monthly EMI."
+          ],
+          "category_name": "Product Mapping & Pitch",
+          "meta": {
+            "winning_pitch_phrases": [
+              "With our Express Balance Transfer, we can shift your existing loan smoothly and help you reduce your monthly EMI."
+            ],
+            "prompt": "With our Express Balance Transfer, we can shift your existing loan smoothly and help you reduce your monthly EMI."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        },
+        "eligibility_documentation_explanation": {
+          "name": "Eligibility & Documentation Explanation",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Explains ABHFL eligibility norms and doc requirements.",
+          "required": true,
+          "evaluation_criteria": [
+            "States basic eligibility (age, income type, stability, credit profile).",
+            "Lists required documents clearly (income, KYC, property) and any extras.",
+            "Clarifies co-applicant/guarantor norms if applicable.",
+            "Explains verification steps and timelines to decision.",
+            "Uses phrase like: We?ll need your income documents, KYC, and property papers to confirm eligibility and process the application quickly."
+          ],
+          "category_name": "Product Mapping & Pitch",
+          "meta": {
+            "winning_pitch_phrases": [
+              "We?ll need your income documents, KYC, and property papers to confirm eligibility and process the application quickly."
+            ],
+            "prompt": "We?ll need your income documents, KYC, and property papers to confirm eligibility and process the application quickly."
+          },
+          "created_at": "2026-02-26T11:26:05.269160+00:00",
+          "updated_at": "2026-02-26T11:26:05.269160+00:00"
+        }
+      },
+      "created_at": "2026-02-26T11:26:05.269160+00:00",
+      "updated_at": "2026-02-26T11:26:05.269160+00:00"
+    }
+  },
+  "created_at": "2026-02-26T11:26:05.269160+00:00",
+  "updated_at": "2026-02-26T11:26:05.269160+00:00"
+};
+const teamCategories = {
+  "company_id": "70",
+  "team_id": "51",
+  "manager_id": "5063",
+  "cat_keys": [
+    "closing_next_steps",
+    "compliance_mandatory_disclosures",
+    "conversation_quality",
+    "customer_discovery_qualification",
+    "greeting_professionalism",
+    "objection_handling",
+    "pitch_content_accuracy",
+    "product_mapping_pitch"
+  ],
+  "cat_titles": [
+    "Closing & Next Steps",
+    "Compliance & Mandatory Disclosures",
+    "Conversation Quality",
+    "Customer Discovery & Qualification",
+    "Greeting & Professionalism",
+    "Objection Handling",
+    "Pitch Content Accuracy",
+    "Product Mapping & Pitch"
+  ],
+  "subcat_keys": [
+    "summary_recap",
+    "soft_commitment",
+    "next_action_planning",
+    "kyc_documentation_requirements",
+    "fair_practice_code_risk_explanation",
+    "regulatory_policy_alignment",
+    "clarity_listening",
+    "structured_flow_confidence",
+    "applicant_profile_understanding",
+    "loan_purpose_identification",
+    "property_details",
+    "financial_capacity_obligations",
+    "loan_amount_tenure_expectation",
+    "agent_introduction",
+    "agenda_setting",
+    "professional_tone_conduct",
+    "rate_or_emi_concerns",
+    "documentation_or_process_fear",
+    "competitor_comparisons",
+    "interest_rate_transparency",
+    "charges_mitc",
+    "emi_tenure_structuring",
+    "digital_tools_customer_journey",
+    "home_loan_product_mapping",
+    "lap_micro_lap_suitability",
+    "construction_finance_micro_cf_mapping",
+    "balance_transfer_recommendation",
+    "eligibility_documentation_explanation"
+  ],
+  "subcat_titles": [
+    "Summary Recap",
+    "Soft Commitment",
+    "Next Action Planning",
+    "KYC & Documentation Requirements",
+    "Fair Practice Code + Risk Explanation",
+    "Regulatory/Policy Alignment",
+    "Clarity & Listening",
+    "Structured Flow & Confidence",
+    "Applicant Profile Understanding",
+    "Loan Purpose Identification",
+    "Property Details",
+    "Financial Capacity & Obligations",
+    "Loan Amount & Tenure Expectation",
+    "Agent Introduction",
+    "Agenda Setting",
+    "Professional Tone & Conduct",
+    "Rate or EMI Concerns",
+    "Documentation or Process Fear",
+    "Competitor Comparisons",
+    "Interest Rate Transparency",
+    "Charges & MITC",
+    "EMI & Tenure Structuring",
+    "Digital Tools & Customer Journey",
+    "Home Loan Product Mapping",
+    "LAP / Micro LAP Suitability",
+    "Construction Finance / Micro CF Mapping",
+    "Balance Transfer Recommendation",
+    "Eligibility & Documentation Explanation"
+  ],
+  "map_cat_to_subcat": {
+    "closing_next_steps": [
+      "summary_recap",
+      "soft_commitment",
+      "next_action_planning"
+    ],
+    "compliance_mandatory_disclosures": [
+      "kyc_documentation_requirements",
+      "fair_practice_code_risk_explanation",
+      "regulatory_policy_alignment"
+    ],
+    "conversation_quality": [
+      "clarity_listening",
+      "structured_flow_confidence"
+    ],
+    "customer_discovery_qualification": [
+      "applicant_profile_understanding",
+      "loan_purpose_identification",
+      "property_details",
+      "financial_capacity_obligations",
+      "loan_amount_tenure_expectation"
+    ],
+    "greeting_professionalism": [
+      "agent_introduction",
+      "agenda_setting",
+      "professional_tone_conduct"
+    ],
+    "objection_handling": [
+      "rate_or_emi_concerns",
+      "documentation_or_process_fear",
+      "competitor_comparisons"
+    ],
+    "pitch_content_accuracy": [
+      "interest_rate_transparency",
+      "charges_mitc",
+      "emi_tenure_structuring",
+      "digital_tools_customer_journey"
+    ],
+    "product_mapping_pitch": [
+      "home_loan_product_mapping",
+      "lap_micro_lap_suitability",
+      "construction_finance_micro_cf_mapping",
+      "balance_transfer_recommendation",
+      "eligibility_documentation_explanation"
+    ]
+  },
+  "max_subcat_score": {
+    "closing_next_steps": {
+      "summary_recap": 3,
+      "soft_commitment": 3,
+      "next_action_planning": 2
+    },
+    "compliance_mandatory_disclosures": {
+      "kyc_documentation_requirements": 5,
+      "fair_practice_code_risk_explanation": 4,
+      "regulatory_policy_alignment": 3
+    },
+    "conversation_quality": {
+      "clarity_listening": 3,
+      "structured_flow_confidence": 5
+    },
+    "customer_discovery_qualification": {
+      "applicant_profile_understanding": 3,
+      "loan_purpose_identification": 2,
+      "property_details": 4,
+      "financial_capacity_obligations": 4,
+      "loan_amount_tenure_expectation": 5
+    },
+    "greeting_professionalism": {
+      "agent_introduction": 3,
+      "agenda_setting": 4,
+      "professional_tone_conduct": 3
+    },
+    "objection_handling": {
+      "rate_or_emi_concerns": 5,
+      "documentation_or_process_fear": 2,
+      "competitor_comparisons": 4
+    },
+    "pitch_content_accuracy": {
+      "interest_rate_transparency": 2,
+      "charges_mitc": 4,
+      "emi_tenure_structuring": 3,
+      "digital_tools_customer_journey": 4
+    },
+    "product_mapping_pitch": {
+      "home_loan_product_mapping": 4,
+      "lap_micro_lap_suitability": 4,
+      "construction_finance_micro_cf_mapping": 4,
+      "balance_transfer_recommendation": 5,
+      "eligibility_documentation_explanation": 3
+    }
+  },
+  "max_cat_score": {
+    "closing_next_steps": 8,
+    "compliance_mandatory_disclosures": 12,
+    "conversation_quality": 8,
+    "customer_discovery_qualification": 18,
+    "greeting_professionalism": 10,
+    "objection_handling": 11,
+    "pitch_content_accuracy": 13,
+    "product_mapping_pitch": 20
+  },
+  "created_at": "2026-02-26T11:29:15.906289+00:00",
+  "updated_at": "2026-02-26T11:29:15.906289+00:00"
+};
+
+// convert *_at ISO strings to Date objects recursively
+function fixDates(obj){
+  if (!obj || typeof obj !== "object") return;
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if ((k.endsWith("_at") || k === "created_at" || k === "updated_at") && typeof v === "string") {
+      obj[k] = new Date(v);
+    } else if (v && typeof v === 'object') {
+      fixDates(v);
+    }
+  }
+}
+fixDates(teamConfigs);
+fixDates(teamCategories);
+
+db.team_configs.updateOne({"company_id": "70", "team_id": "51"}, {$set: teamConfigs}, {upsert:true});
+db.team_categories.updateOne({"company_id": "70", "team_id": "51"}, {$set: teamCategories}, {upsert:true});
+print("✅ Ingestion done for company_id=" + teamConfigs.company_id + " team_id=" + teamConfigs.team_id);

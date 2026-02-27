@@ -1,0 +1,679 @@
+use companyId_57_RA;
+
+// ensure required collections exist
+const required = ["live_calls", "sessions", "team_categories", "team_configs"];
+const existing = db.getCollectionNames();
+for (const c of required) { if (!existing.includes(c)) db.createCollection(c); }
+
+// enforce uniqueness on (company_id, team_id)
+db.team_configs.createIndex({company_id:1, team_id:1}, {unique:true});
+db.team_categories.createIndex({company_id:1, team_id:1}, {unique:true});
+
+// backup existing docs before overwrite
+if (!db.getCollectionNames().includes("team_configs_backup")) db.createCollection("team_configs_backup");
+if (!db.getCollectionNames().includes("team_categories_backup")) db.createCollection("team_categories_backup");
+const filt = {"company_id": "57", "team_id": "59"};
+const oldTC = db.team_configs.findOne(filt);
+if (oldTC) { oldTC.backed_up_at = new Date(); db.team_configs_backup.insertOne(oldTC); }
+const oldTCat = db.team_categories.findOne(filt);
+if (oldTCat) { oldTCat.backed_up_at = new Date(); db.team_categories_backup.insertOne(oldTCat); }
+
+// upsert team_configs + team_categories
+const teamConfigs = {
+  "company_id": "57",
+  "team_id": "59",
+  "categories": {
+    "intent": {
+      "name": "Intent",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Evaluates if the agent identified the case need and applied the correct WSA/WSC/WFA workflow, ensuring accurate updates, follow-through, and quality closure.",
+      "total_score": 3,
+      "subcategories": {
+        "wsa_wsc_wfa": {
+          "name": "WSA/WSC/WFA",
+          "max_score": 3,
+          "is_dynamic": false,
+          "description": "Agent took the correct WSA/WSC/WFA action as per case requirement, ensuring proper follow-up and high-quality case closure.",
+          "required": true,
+          "evaluation_criteria": [
+            "Selects and executes the correct WSA/WSC/WFA based on case criteria.",
+            "Documents action and rationale in case notes; updates all required fields.",
+            "Triggers required follow-ups (tasks/tickets) with clear owners and due dates.",
+            "Verifies system status reflects action; closes or routes case per policy.",
+            "Uses phrase like: ?I?m taking the correct action now so this case is updated and resolved properly.?"
+          ],
+          "category_name": "Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?I?m taking the correct action now so this case is updated and resolved properly.?"
+            ],
+            "prompt": "?I?m taking the correct action now so this case is updated and resolved properly.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "knowledge_gap": {
+      "name": "Knowledge Gap",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Assesses whether the agent proactively fills information gaps with clear, accurate guidance, including process, timelines, and next steps.",
+      "total_score": 5,
+      "subcategories": {
+        "additional_information_provided_when_required": {
+          "name": "Additional information provided when required",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Agent provided proactive and additional required information clearly, helping the seller understand the process and next steps end-to-end.",
+          "required": true,
+          "evaluation_criteria": [
+            "Proactively adds missing, relevant details",
+            "Clearly explains process and next steps end-to-end",
+            "States accurate timelines and expectations",
+            "Confirms understanding or invites questions",
+            "Uses phrase like: Also, for your awareness, the expected timeline and next steps will be ___."
+          ],
+          "category_name": "Knowledge Gap",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Also, for your awareness, the expected timeline and next steps will be ___.?"
+            ],
+            "prompt": "?Also, for your awareness, the expected timeline and next steps will be ___.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "resolution_ce_intent": {
+      "name": "Resolution (CE) - Intent",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Evaluates if the agent resolves the issue by following SOP/knowledge tools and fully addresses primary and secondary queries in one interaction.",
+      "total_score": 12,
+      "subcategories": {
+        "incorrect_resolution_sop_not_followed": {
+          "name": "Incorrect resolution (SOP not followed)",
+          "max_score": 7,
+          "is_dynamic": false,
+          "description": "Agent provided the correct resolution by following SOP/Knowmax/AI process properly, ensuring the seller?s issue was handled accurately and effectively.",
+          "required": true,
+          "evaluation_criteria": [
+            "Follows SOP/Knowmax/AI steps exactly for the issue",
+            "Uses correct tool/flow; no skipped or improvised steps",
+            "Verifies details and prerequisites before action",
+            "Escalates or transfers per SOP when required",
+            "Uses phrase like: ?As per SOP, I?ll follow the correct process and guide you with the right steps now.?"
+          ],
+          "category_name": "Resolution (CE) - Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?As per SOP, I?ll follow the correct process and guide you with the right steps now.?"
+            ],
+            "prompt": "?As per SOP, I?ll follow the correct process and guide you with the right steps now.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "secondary_query_not_addressed": {
+          "name": "Secondary query not addressed",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Agent resolved the primary concern and also addressed the secondary query completely, ensuring full resolution in the same interaction.",
+          "required": true,
+          "evaluation_criteria": [
+            "Proactively checks for any additional concerns",
+            "Captures and resolves secondary query in the same interaction",
+            "Provides clear next steps if follow-up is needed",
+            "Confirms closure of both primary and secondary issues",
+            "Uses phrase like: ?Apart from this, was there any other issue you wanted help with today??"
+          ],
+          "category_name": "Resolution (CE) - Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Apart from this, was there any other issue you wanted help with today??"
+            ],
+            "prompt": "?Apart from this, was there any other issue you wanted help with today??"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "resolution_ce_knowledge_gap": {
+      "name": "Resolution (CE) - Knowledge Gap",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Agent accurately identifies the seller’s exact concern before giving guidance to prevent confusion and ensure correct resolution.",
+      "total_score": 5,
+      "subcategories": {
+        "actual_concern_identified_or_not": {
+          "name": "Actual concern identified or not",
+          "max_score": 5,
+          "is_dynamic": false,
+          "description": "Agent identified the seller?s exact concern correctly before providing guidance, which improved resolution accuracy and reduced confusion.",
+          "required": true,
+          "evaluation_criteria": [
+            "Confirms the seller’s core issue before advising",
+            "Asks clarifying questions to pinpoint concern (payment/listing/return)",
+            "Paraphrases and verifies understanding with the seller",
+            "Avoids assumptions; waits until concern is clear",
+            "Uses phrase like: ?To help correctly, can you confirm your exact concern: is it related to payment, listing, or return??"
+          ],
+          "category_name": "Resolution (CE) - Knowledge Gap",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?To help correctly, can you confirm your exact concern: is it related to payment, listing, or return??"
+            ],
+            "prompt": "?To help correctly, can you confirm your exact concern: is it related to payment, listing, or return??"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "seller_expectation": {
+      "name": "Seller Expectation",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Measures how well the agent addresses seller objections, sets clear expectations, explains resolutions, and confirms understanding before proceeding.",
+      "total_score": 4,
+      "subcategories": {
+        "effective_seller_objection_handling": {
+          "name": "Effective seller objection handling",
+          "max_score": 4,
+          "is_dynamic": false,
+          "description": "Agent handled the seller?s objections effectively, explained the resolution confidently, and confirmed the seller?s understanding before proceeding.",
+          "required": true,
+          "evaluation_criteria": [
+            "Acknowledges the seller’s concern with empathy.",
+            "Probes to clarify the objection before responding.",
+            "Explains the resolution clearly and confidently.",
+            "Confirms the seller’s understanding and agreement before proceeding.",
+            "Uses phrase like: I understand your concern. Let me explain why this is the best step and confirm if it works for you."
+          ],
+          "category_name": "Seller Expectation",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?I understand your concern. Let me explain why this is the best step and confirm if it works for you.?"
+            ],
+            "prompt": "?I understand your concern. Let me explain why this is the best step and confirm if it works for you.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "seller_experience_compliance": {
+      "name": "Seller Experience - Compliance",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Standards ensuring agents treat sellers respectfully, avoid interruptions, and maintain professional tone, pacing, and courtesy.",
+      "total_score": 14,
+      "subcategories": {
+        "interrupting_seller": {
+          "name": "Interrupting seller",
+          "max_score": 7,
+          "is_dynamic": false,
+          "description": "Agent did not interrupt the seller, allowed them to complete their concern, and managed the conversation politely, ensuring the seller felt heard.",
+          "required": true,
+          "evaluation_criteria": [
+            "Does not interrupt; lets seller finish.",
+            "Waits for a natural pause before speaking.",
+            "Acknowledges key points before guiding next steps.",
+            "Politely asks permission to interject if needed.",
+            "Uses phrase like: ?Sorry for interrupting, please continue. I?m listening.?"
+          ],
+          "category_name": "Seller Experience - Compliance",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Sorry for interrupting, please continue. I?m listening.?"
+            ],
+            "prompt": "?Sorry for interrupting, please continue. I?m listening.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "tone_intonation_rate_of_speech_courtesy": {
+          "name": "Tone & Intonation / Rate of speech / Courtesy",
+          "max_score": 7,
+          "is_dynamic": false,
+          "description": "Agent maintained a courteous, confident tone with proper pacing and clear speech, creating a professional and reassuring seller experience.",
+          "required": true,
+          "evaluation_criteria": [
+            "Maintains calm, respectful, and confident tone.",
+            "Speaks clearly at a moderate pace; avoids rushing.",
+            "Shows empathy and reassurance.",
+            "Avoids slang/jargon; remains professional and courteous.",
+            "Uses phrase like: ?Thank you for explaining. I understand this is important, I?ll handle it carefully.?"
+          ],
+          "category_name": "Seller Experience - Compliance",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Thank you for explaining. I understand this is important, I?ll handle it carefully.?"
+            ],
+            "prompt": "?Thank you for explaining. I understand this is important, I?ll handle it carefully.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "seller_experience_intent": {
+      "name": "Seller Experience - Intent",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Evaluates how well the agent shows intent to help by probing and paraphrasing, using the seller’s preferred language, and ensuring response accuracy.",
+      "total_score": 31,
+      "subcategories": {
+        "probing_attentiveness_paraphrasing": {
+          "name": "Probing, Attentiveness & Paraphrasing",
+          "max_score": 10,
+          "is_dynamic": false,
+          "description": "Agent probed properly, listened attentively, captured key details, and clearly acknowledged/paraphrased the seller?s concern to ensure correct understanding.",
+          "required": true,
+          "evaluation_criteria": [
+            "Asks targeted probing questions to uncover root cause",
+            "Listens without interrupting; notes key details",
+            "Paraphrases the concern to confirm understanding",
+            "Summarizes agreed next steps clearly",
+            "Uses phrase like: Just to confirm, you?re facing ___ issue, and you need help with ___, correct?"
+          ],
+          "category_name": "Seller Experience - Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Just to confirm, you?re facing ___ issue, and you need help with ___, correct??"
+            ],
+            "prompt": "?Just to confirm, you?re facing ___ issue, and you need help with ___, correct??"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "spoke_in_seller_s_preferred_language": {
+          "name": "Spoke in seller?s preferred language",
+          "max_score": 7,
+          "is_dynamic": false,
+          "description": "Agent switched to the seller?s preferred language whenever required, improving clarity, comfort, and overall communication effectiveness.",
+          "required": true,
+          "evaluation_criteria": [
+            "Confirms language preference early in the call",
+            "Switches promptly and speaks fluently in chosen language",
+            "Keeps explanations simple and clear in that language",
+            "Checks comfort/comprehension periodically",
+            "Uses phrase like: Sir, aap Hindi mein continue karna prefer karenge ya English mein?"
+          ],
+          "category_name": "Seller Experience - Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Sir, aap Hindi mein continue karna prefer karenge ya English mein??"
+            ],
+            "prompt": "?Sir, aap Hindi mein continue karna prefer karenge ya English mein??"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "agent_reviewed_the_response_accuracy": {
+          "name": "Agent reviewed the response accuracy",
+          "max_score": 14,
+          "is_dynamic": false,
+          "description": "Agent reviewed response accuracy properly, used the correct template, ensured all mandatory details were included, and filled all placeholders correctly.",
+          "required": true,
+          "evaluation_criteria": [
+            "Uses the correct template/workflow",
+            "Ensures all mandatory fields and placeholders are filled",
+            "Cross-checks details with source systems before confirming",
+            "Fixes any inconsistencies before closing",
+            "Uses phrase like: Let me quickly recheck all details once before I confirm this to you."
+          ],
+          "category_name": "Seller Experience - Intent",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Let me quickly recheck all details once before I confirm this to you.?"
+            ],
+            "prompt": "?Let me quickly recheck all details once before I confirm this to you.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "seller_experience_knowledge_gap": {
+      "name": "Seller Experience - Knowledge Gap",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Evaluates how the agent addresses seller issues with empathy, apology, assurance, and personalization to build trust and rapport; flags gaps that harm the seller experience.",
+      "total_score": 10,
+      "subcategories": {
+        "empathy_apology_rapport_building": {
+          "name": "Empathy / Apology & Rapport building",
+          "max_score": 10,
+          "is_dynamic": false,
+          "description": "Agent showed empathy, apologized where required, gave assurance, and personalized the conversation, which improved seller trust and rapport.",
+          "required": true,
+          "evaluation_criteria": [
+            "Acknowledges seller’s feelings and inconvenience.",
+            "Offers clear apology when appropriate.",
+            "Provides assurance and concrete next steps.",
+            "Personalizes responses using seller’s context.",
+            "Uses phrase like: ?I?m really sorry you had to face this. Don?t worry, I?ll help you resolve it step by step.?"
+          ],
+          "category_name": "Seller Experience - Knowledge Gap",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?I?m really sorry you had to face this. Don?t worry, I?ll help you resolve it step by step.?"
+            ],
+            "prompt": "?I?m really sorry you had to face this. Don?t worry, I?ll help you resolve it step by step.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "seller_experience_sop_adherence": {
+      "name": "Seller Experience - SOP Adherence",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Ensures agents follow SOP for call openings/closings, greetings, holds, mute use, and mandatory scripts to keep a smooth call flow with no dead air.",
+      "total_score": 10,
+      "subcategories": {
+        "call_management_opening_closing_hold_mute_usage": {
+          "name": "Call management (Opening/Closing/Hold/Mute usage)",
+          "max_score": 10,
+          "is_dynamic": false,
+          "description": "Agent followed SOP correctly for opening/closing, greeting, introduction, hold etiquette, mute usage, and mandatory scripts, ensuring smooth call flow with no dead air.",
+          "required": true,
+          "evaluation_criteria": [
+            "Opens with proper greeting and self-intro per SOP.",
+            "Delivers mandatory scripts/disclosures accurately.",
+            "Uses phrase like: ?May I place you on hold for 20 seconds while I check this for you? Thank you for waiting.?",
+            "Uses mute/hold correctly; avoids dead air; narrates actions.",
+            "Closes with clear recap and offer of further help."
+          ],
+          "category_name": "Seller Experience - SOP Adherence",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?May I place you on hold for 20 seconds while I check this for you? Thank you for waiting.?"
+            ],
+            "prompt": "?May I place you on hold for 20 seconds while I check this for you? Thank you for waiting.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    },
+    "zero_tolerance_compliance": {
+      "name": "Zero tolerance - Compliance",
+      "is_static": true,
+      "entity_type": null,
+      "description": "Zero-tolerance compliance behaviors ensuring professionalism, responsible call handling, and strict data/privacy protection; any breach fails the interaction.",
+      "total_score": 6,
+      "subcategories": {
+        "abusive_rude_sarcastic_language": {
+          "name": "Abusive/rude/sarcastic language",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Agent maintained professional and respectful language throughout the call/email, and did not use any abusive, rude, sarcastic, or mocking tone at any point.",
+          "required": true,
+          "evaluation_criteria": [
+            "Maintains professional, respectful tone throughout.",
+            "Uses no abusive, rude, sarcastic, or mocking language.",
+            "De-escalates calmly; avoids condescension or sighs.",
+            "Uses phrase like: ?Thank you for your patience. I?ll assist you respectfully and resolve this properly.?"
+          ],
+          "category_name": "Zero tolerance - Compliance",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Thank you for your patience. I?ll assist you respectfully and resolve this properly.?"
+            ],
+            "prompt": "?Thank you for your patience. I?ll assist you respectfully and resolve this properly.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "call_disconnection_avoidance_long_hold_incorrect_transfers": {
+          "name": "Call disconnection/avoidance/long hold/incorrect transfers",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Agent handled the call responsibly without avoiding the seller, without forcefully disconnecting/closing the call, without keeping the seller on unnecessary hold, and ensured transfers (if any) were done correctly as per SOP.",
+          "required": true,
+          "evaluation_criteria": [
+            "Does not avoid, force-disconnect, or close the call.",
+            "Seeks consent for holds; states reason and expected time; returns on time.",
+            "Transfers only when needed; gives warm handoff as per SOP.",
+            "Uses phrase like: ?I?m staying connected with you and I?ll handle this properly without unnecessary hold or incorrect transfers.?"
+          ],
+          "category_name": "Zero tolerance - Compliance",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?I?m staying connected with you and I?ll handle this properly without unnecessary hold or incorrect transfers.?"
+            ],
+            "prompt": "?I?m staying connected with you and I?ll handle this properly without unnecessary hold or incorrect transfers.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        },
+        "data_proprietary_breach_credential_misuse_loopholes": {
+          "name": "Data/proprietary breach, credential misuse, loopholes",
+          "max_score": 2,
+          "is_dynamic": false,
+          "description": "Agent protected seller and Flipkart data properly by not sharing proprietary information externally, not disclosing seller details, not misusing system rights, and strictly following security and privacy guidelines.",
+          "required": true,
+          "evaluation_criteria": [
+            "Verifies identity per policy; shares no confidential/proprietary info.",
+            "Never requests or shares passwords/OTP; no credential misuse.",
+            "Accesses systems within role; no workarounds/loopholes.",
+            "Masks/redacts sensitive data in notes and emails.",
+            "Uses phrase like: ?Your information is completely secure. I?ll follow all privacy guidelines while assisting you.?"
+          ],
+          "category_name": "Zero tolerance - Compliance",
+          "meta": {
+            "winning_pitch_phrases": [
+              "?Your information is completely secure. I?ll follow all privacy guidelines while assisting you.?"
+            ],
+            "prompt": "?Your information is completely secure. I?ll follow all privacy guidelines while assisting you.?"
+          },
+          "created_at": "2026-02-26T06:56:49.265652+00:00",
+          "updated_at": "2026-02-26T06:56:49.265652+00:00"
+        }
+      },
+      "created_at": "2026-02-26T06:56:49.265652+00:00",
+      "updated_at": "2026-02-26T06:56:49.265652+00:00"
+    }
+  },
+  "created_at": "2026-02-26T06:56:49.265652+00:00",
+  "updated_at": "2026-02-26T06:56:49.265652+00:00"
+};
+const teamCategories = {
+  "company_id": "57",
+  "team_id": "59",
+  "manager_id": "5582",
+  "cat_keys": [
+    "intent",
+    "knowledge_gap",
+    "resolution_ce_intent",
+    "resolution_ce_knowledge_gap",
+    "seller_expectation",
+    "seller_experience_compliance",
+    "seller_experience_intent",
+    "seller_experience_knowledge_gap",
+    "seller_experience_sop_adherence",
+    "zero_tolerance_compliance"
+  ],
+  "cat_titles": [
+    "Intent",
+    "Knowledge Gap",
+    "Resolution (CE) - Intent",
+    "Resolution (CE) - Knowledge Gap",
+    "Seller Expectation",
+    "Seller Experience - Compliance",
+    "Seller Experience - Intent",
+    "Seller Experience - Knowledge Gap",
+    "Seller Experience - SOP Adherence",
+    "Zero tolerance - Compliance"
+  ],
+  "subcat_keys": [
+    "wsa_wsc_wfa",
+    "additional_information_provided_when_required",
+    "incorrect_resolution_sop_not_followed",
+    "secondary_query_not_addressed",
+    "actual_concern_identified_or_not",
+    "effective_seller_objection_handling",
+    "interrupting_seller",
+    "tone_intonation_rate_of_speech_courtesy",
+    "probing_attentiveness_paraphrasing",
+    "spoke_in_seller_s_preferred_language",
+    "agent_reviewed_the_response_accuracy",
+    "empathy_apology_rapport_building",
+    "call_management_opening_closing_hold_mute_usage",
+    "abusive_rude_sarcastic_language",
+    "call_disconnection_avoidance_long_hold_incorrect_transfers",
+    "data_proprietary_breach_credential_misuse_loopholes"
+  ],
+  "subcat_titles": [
+    "WSA/WSC/WFA",
+    "Additional information provided when required",
+    "Incorrect resolution (SOP not followed)",
+    "Secondary query not addressed",
+    "Actual concern identified or not",
+    "Effective seller objection handling",
+    "Interrupting seller",
+    "Tone & Intonation / Rate of speech / Courtesy",
+    "Probing, Attentiveness & Paraphrasing",
+    "Spoke in seller?s preferred language",
+    "Agent reviewed the response accuracy",
+    "Empathy / Apology & Rapport building",
+    "Call management (Opening/Closing/Hold/Mute usage)",
+    "Abusive/rude/sarcastic language",
+    "Call disconnection/avoidance/long hold/incorrect transfers",
+    "Data/proprietary breach, credential misuse, loopholes"
+  ],
+  "map_cat_to_subcat": {
+    "intent": [
+      "wsa_wsc_wfa"
+    ],
+    "knowledge_gap": [
+      "additional_information_provided_when_required"
+    ],
+    "resolution_ce_intent": [
+      "incorrect_resolution_sop_not_followed",
+      "secondary_query_not_addressed"
+    ],
+    "resolution_ce_knowledge_gap": [
+      "actual_concern_identified_or_not"
+    ],
+    "seller_expectation": [
+      "effective_seller_objection_handling"
+    ],
+    "seller_experience_compliance": [
+      "interrupting_seller",
+      "tone_intonation_rate_of_speech_courtesy"
+    ],
+    "seller_experience_intent": [
+      "probing_attentiveness_paraphrasing",
+      "spoke_in_seller_s_preferred_language",
+      "agent_reviewed_the_response_accuracy"
+    ],
+    "seller_experience_knowledge_gap": [
+      "empathy_apology_rapport_building"
+    ],
+    "seller_experience_sop_adherence": [
+      "call_management_opening_closing_hold_mute_usage"
+    ],
+    "zero_tolerance_compliance": [
+      "abusive_rude_sarcastic_language",
+      "call_disconnection_avoidance_long_hold_incorrect_transfers",
+      "data_proprietary_breach_credential_misuse_loopholes"
+    ]
+  },
+  "max_subcat_score": {
+    "intent": {
+      "wsa_wsc_wfa": 3
+    },
+    "knowledge_gap": {
+      "additional_information_provided_when_required": 5
+    },
+    "resolution_ce_intent": {
+      "incorrect_resolution_sop_not_followed": 7,
+      "secondary_query_not_addressed": 5
+    },
+    "resolution_ce_knowledge_gap": {
+      "actual_concern_identified_or_not": 5
+    },
+    "seller_expectation": {
+      "effective_seller_objection_handling": 4
+    },
+    "seller_experience_compliance": {
+      "interrupting_seller": 7,
+      "tone_intonation_rate_of_speech_courtesy": 7
+    },
+    "seller_experience_intent": {
+      "probing_attentiveness_paraphrasing": 10,
+      "spoke_in_seller_s_preferred_language": 7,
+      "agent_reviewed_the_response_accuracy": 14
+    },
+    "seller_experience_knowledge_gap": {
+      "empathy_apology_rapport_building": 10
+    },
+    "seller_experience_sop_adherence": {
+      "call_management_opening_closing_hold_mute_usage": 10
+    },
+    "zero_tolerance_compliance": {
+      "abusive_rude_sarcastic_language": 2,
+      "call_disconnection_avoidance_long_hold_incorrect_transfers": 2,
+      "data_proprietary_breach_credential_misuse_loopholes": 2
+    }
+  },
+  "max_cat_score": {
+    "intent": 3,
+    "knowledge_gap": 5,
+    "resolution_ce_intent": 12,
+    "resolution_ce_knowledge_gap": 5,
+    "seller_expectation": 4,
+    "seller_experience_compliance": 14,
+    "seller_experience_intent": 31,
+    "seller_experience_knowledge_gap": 10,
+    "seller_experience_sop_adherence": 10,
+    "zero_tolerance_compliance": 6
+  },
+  "created_at": "2026-02-26T07:01:47.159573+00:00",
+  "updated_at": "2026-02-26T07:01:47.159573+00:00"
+};
+
+// convert *_at ISO strings to Date objects recursively
+function fixDates(obj){
+  if (!obj || typeof obj !== "object") return;
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if ((k.endsWith("_at") || k === "created_at" || k === "updated_at") && typeof v === "string") {
+      obj[k] = new Date(v);
+    } else if (v && typeof v === 'object') {
+      fixDates(v);
+    }
+  }
+}
+fixDates(teamConfigs);
+fixDates(teamCategories);
+
+db.team_configs.updateOne({"company_id": "57", "team_id": "59"}, {$set: teamConfigs}, {upsert:true});
+db.team_categories.updateOne({"company_id": "57", "team_id": "59"}, {$set: teamCategories}, {upsert:true});
+print("✅ Ingestion done for company_id=" + teamConfigs.company_id + " team_id=" + teamConfigs.team_id);
