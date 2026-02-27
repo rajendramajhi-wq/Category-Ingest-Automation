@@ -29,6 +29,12 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
+import logging
+logger = logging.getLogger("ingest")
+
 
 import pandas as pd
 import typer
@@ -280,6 +286,200 @@ def openai_parse_enrichment(
 # Build team_configs
 # --------------------------
 
+# def build_team_configs_with_openai(
+#     df: pd.DataFrame,
+#     cols: Dict[str, Optional[str]],
+#     company_id: str,
+#     team_id: str,
+#     model: str,
+#     chunk_size: int = 25,
+# ) -> Dict[str, Any]:
+#     ts = now_iso()
+#     client = get_openai_client()
+
+#     cat_col = cols["category"]
+#     sub_col = cols["subcategory"]
+#     if not cat_col or not sub_col:
+#         raise ValueError("Need category and subcategory columns.")
+
+#     cat_slug_col = cols.get("category_slug")
+#     sub_slug_col = cols.get("subcategory_slug")
+#     max_col = cols.get("max_score")
+#     desc_col = cols.get("description")
+#     pitch_col = cols.get("pitch")
+#     prompt_col = cols.get("prompt")
+
+#     team_configs: Dict[str, Any] = {
+#         "company_id": str(company_id),
+#         "team_id": str(team_id),
+#         "categories": {},
+#         "created_at": ts,
+#         "updated_at": ts,
+#     }
+
+#     df2 = df.copy()
+#     df2[cat_col] = df2[cat_col].astype(str).str.strip()
+#     df2[sub_col] = df2[sub_col].astype(str).str.strip()
+
+#     for cat_name, g in df2.groupby(cat_col, dropna=False):
+#         cat_name = str(cat_name).strip()
+#         if not cat_name:
+#             continue
+
+#         # Option 2: use category_slug if present (must be consistent within category group)
+#         cat_slug_override = ""
+#         if cat_slug_col and cat_slug_col in g.columns:
+#             uniq = {str(x).strip() for x in g[cat_slug_col].dropna().tolist() if str(x).strip()}
+#             if len(uniq) > 1:
+#                 raise ValueError(f"Multiple category_slug values for category '{cat_name}': {sorted(list(uniq))}")
+#             if len(uniq) == 1:
+#                 cat_slug_override = sanitize_slug_underscore(list(uniq)[0])
+
+#         cat_slug = cat_slug_override or generate_slug(cat_name)
+
+#         if cat_slug in team_configs["categories"]:
+#             raise ValueError(f"Category key collision: '{cat_name}' -> {cat_slug}")
+
+#         raw_rows_all: List[Dict[str, Any]] = []
+#         for _, row in g.iterrows():
+#             sub_name = str(row[sub_col]).strip()
+#             if not sub_name:
+#                 continue
+
+#             # sub slug override
+#             sub_slug_override = ""
+#             if sub_slug_col and sub_slug_col in g.columns:
+#                 v = row.get(sub_slug_col)
+#                 if v is not None and not (isinstance(v, float) and pd.isna(v)):
+#                     sub_slug_override = sanitize_slug_underscore(str(v).strip())
+
+#             max_score = 0
+#             if max_col and row.get(max_col) is not None and not (isinstance(row.get(max_col), float) and pd.isna(row.get(max_col))):
+#                 try:
+#                     max_score = int(float(row[max_col]))
+#                 except Exception:
+#                     max_score = 0
+
+#             desc = ""
+#             if desc_col and row.get(desc_col) is not None and not (isinstance(row.get(desc_col), float) and pd.isna(row.get(desc_col))):
+#                 desc = str(row[desc_col]).strip()
+
+#             prompt_txt = ""
+#             if prompt_col and row.get(prompt_col) is not None and not (isinstance(row.get(prompt_col), float) and pd.isna(row.get(prompt_col))):
+#                 prompt_txt = str(row[prompt_col]).strip()
+
+#             # pitches: List[str] = []
+#             # if pitch_col:
+#             #     pitches = parse_list(row.get(pitch_col))
+
+#             # # if no explicit pitches, use prompt as a fallback pitch phrase
+#             # if not pitches and prompt_txt:
+#             #     pitches = [prompt_txt]
+
+
+
+#             pitches: List[str] = []
+#             if pitch_col:
+#                 pitches = parse_list(row.get(pitch_col))
+
+#             # ✅ cap to 1 pitch; DO NOT use prompt as fallback pitch
+#             pitches = [p.strip()[:160] for p in pitches if p and str(p).strip()][:1]
+
+#             # ✅ clip desc to keep LLM fast
+#             desc = (desc or "")[:300]
+
+
+
+#             raw_rows_all.append(
+#                 {
+#                     "name": sub_name,
+#                     "sub_slug_override": sub_slug_override,
+#                     "max_score": max_score,
+#                     "description": desc,
+#                     "winning_pitch_phrases": pitches,
+#                     "prompt": prompt_txt,
+#                 }
+#             )
+
+#         cat_obj: Dict[str, Any] = {
+#             "name": cat_name,
+#             "is_static": True,
+#             "entity_type": None,
+#             "description": "",
+#             "total_score": 0,
+#             "subcategories": {},
+#             "created_at": ts,
+#             "updated_at": ts,
+#         }
+
+#         # Enrich with OpenAI in chunks
+#         enriched_desc = ""
+#         enriched_map: Dict[str, List[str]] = {}
+#         for chunk in chunk_list(raw_rows_all, chunk_size):
+#             # Strip helper keys before sending to OpenAI
+#             chunk_for_llm = [
+#                 {
+#                     "name": r["name"],
+#                     "max_score": r["max_score"],
+#                     # "description": r["description"],
+#                     # "winning_pitch_phrases": r["winning_pitch_phrases"],
+#                     "description": (r["description"] or "")[:300],
+#                     "winning_pitch_phrases": (r["winning_pitch_phrases"] or [])[:1],
+#                 }
+#                 for r in chunk
+#             ]
+#             parsed = openai_parse_enrichment(client=client, model=model, category_name=cat_name, rows=chunk_for_llm)
+#             if not enriched_desc and parsed.category_description:
+#                 enriched_desc = parsed.category_description.strip()
+
+#             for item in parsed.subcategories:
+#                 nm = (item.name or "").strip()
+#                 if not nm:
+#                     continue
+#                 crit = [str(x).strip() for x in (item.evaluation_criteria or []) if str(x).strip()]
+#                 enriched_map[nm] = crit
+
+#         cat_obj["description"] = enriched_desc or ""
+
+#         # Fill subcategories deterministically
+#         for r in raw_rows_all:
+#             sub_name = r["name"]
+#             sub_slug = r["sub_slug_override"] or generate_slug(sub_name)
+
+#             if sub_slug in cat_obj["subcategories"]:
+#                 raise ValueError(f"Subcategory key collision in '{cat_name}': '{sub_name}' -> {sub_slug}")
+
+#             criteria = enriched_map.get(sub_name, [])
+#             if not criteria:
+#                 base = r["description"]
+#                 criteria = [base] if base else []
+
+#             cat_obj["subcategories"][sub_slug] = {
+#                 "name": sub_name,
+#                 "max_score": int(r["max_score"]),
+#                 "is_dynamic": False,
+#                 "description": r["description"],
+#                 "required": True,
+#                 "evaluation_criteria": criteria,
+#                 "category_name": cat_name,
+#                 "meta": {
+#                     "winning_pitch_phrases": r["winning_pitch_phrases"],
+#                     "prompt": r["prompt"],
+#                 },
+#                 "created_at": ts,
+#                 "updated_at": ts,
+#             }
+
+#         cat_obj["total_score"] = sum(sc["max_score"] for sc in cat_obj["subcategories"].values())
+#         team_configs["categories"][cat_slug] = cat_obj
+
+#     return team_configs
+
+
+
+
+
+
 def build_team_configs_with_openai(
     df: pd.DataFrame,
     cols: Dict[str, Optional[str]],
@@ -289,7 +489,8 @@ def build_team_configs_with_openai(
     chunk_size: int = 25,
 ) -> Dict[str, Any]:
     ts = now_iso()
-    client = get_openai_client()
+
+    llm_calls_total = 0
 
     cat_col = cols["category"]
     sub_col = cols["subcategory"]
@@ -315,6 +516,12 @@ def build_team_configs_with_openai(
     df2[cat_col] = df2[cat_col].astype(str).str.strip()
     df2[sub_col] = df2[sub_col].astype(str).str.strip()
 
+    # -------------------------
+    # 1) Build per-category inputs (fast, local)
+    # -------------------------
+    cat_inputs: List[Tuple[str, str, List[Dict[str, Any]]]] = []
+    seen_cat_slugs: set[str] = set()
+
     for cat_name, g in df2.groupby(cat_col, dropna=False):
         cat_name = str(cat_name).strip()
         if not cat_name:
@@ -331,8 +538,9 @@ def build_team_configs_with_openai(
 
         cat_slug = cat_slug_override or generate_slug(cat_name)
 
-        if cat_slug in team_configs["categories"]:
+        if cat_slug in seen_cat_slugs:
             raise ValueError(f"Category key collision: '{cat_name}' -> {cat_slug}")
+        seen_cat_slugs.add(cat_slug)
 
         raw_rows_all: List[Dict[str, Any]] = []
         for _, row in g.iterrows():
@@ -362,13 +570,14 @@ def build_team_configs_with_openai(
             if prompt_col and row.get(prompt_col) is not None and not (isinstance(row.get(prompt_col), float) and pd.isna(row.get(prompt_col))):
                 prompt_txt = str(row[prompt_col]).strip()
 
+            # ✅ pitches: cap to 1, do NOT use prompt fallback
             pitches: List[str] = []
             if pitch_col:
                 pitches = parse_list(row.get(pitch_col))
+            pitches = [p.strip()[:160] for p in pitches if p and str(p).strip()][:1]
 
-            # if no explicit pitches, use prompt as a fallback pitch phrase
-            if not pitches and prompt_txt:
-                pitches = [prompt_txt]
+            # ✅ clip desc so LLM stays fast
+            desc = (desc or "")[:300]
 
             raw_rows_all.append(
                 {
@@ -377,9 +586,17 @@ def build_team_configs_with_openai(
                     "max_score": max_score,
                     "description": desc,
                     "winning_pitch_phrases": pitches,
-                    "prompt": prompt_txt,
+                    "prompt": prompt_txt,  # still stored in meta (not sent as pitch)
                 }
             )
+
+        cat_inputs.append((cat_slug, cat_name, raw_rows_all))
+
+    # -------------------------
+    # 2) Worker: enrich + build cat_obj (LLM call happens here)
+    # -------------------------
+    def _build_one_category(cat_slug: str, cat_name: str, raw_rows_all: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any], int]:
+        client = get_openai_client()
 
         cat_obj: Dict[str, Any] = {
             "name": cat_name,
@@ -392,21 +609,32 @@ def build_team_configs_with_openai(
             "updated_at": ts,
         }
 
-        # Enrich with OpenAI in chunks
+        local_calls = 0
+
         enriched_desc = ""
         enriched_map: Dict[str, List[str]] = {}
+
         for chunk in chunk_list(raw_rows_all, chunk_size):
-            # Strip helper keys before sending to OpenAI
+            
             chunk_for_llm = [
                 {
                     "name": r["name"],
                     "max_score": r["max_score"],
-                    "description": r["description"],
-                    "winning_pitch_phrases": r["winning_pitch_phrases"],
+                    "description": (r["description"] or "")[:300],
+                    "winning_pitch_phrases": (r["winning_pitch_phrases"] or [])[:1],
                 }
                 for r in chunk
             ]
+
+            # parsed = openai_parse_enrichment(client=client, model=model, category_name=cat_name, rows=chunk_for_llm)
+
+            # llm_calls_total += 1
+            local_calls += 1
+            t_call = time.time()
             parsed = openai_parse_enrichment(client=client, model=model, category_name=cat_name, rows=chunk_for_llm)
+            logger.info(f"LLM call done cat={cat_name} rows={len(chunk_for_llm)} took={time.time()-t_call:.2f}s")
+
+
             if not enriched_desc and parsed.category_description:
                 enriched_desc = parsed.category_description.strip()
 
@@ -449,9 +677,39 @@ def build_team_configs_with_openai(
             }
 
         cat_obj["total_score"] = sum(sc["max_score"] for sc in cat_obj["subcategories"].values())
-        team_configs["categories"][cat_slug] = cat_obj
+        # logger.info(f"LLM summary: categories={len(team_configs['categories'])} llm_calls={llm_calls_total}")
+        return cat_slug, cat_obj, local_calls
+
+    # -------------------------
+    # 3) Parallel run per category
+    # -------------------------
+    if not cat_inputs:
+        return team_configs
+
+    env_workers = int(os.environ.get("INGEST_LLM_MAX_WORKERS", "5"))
+    max_workers = max(1, min(env_workers, 5, len(cat_inputs)))  # clamp to 1..4
+
+    logger.info(f"LLM parallel max_workers={max_workers} categories={len(cat_inputs)} chunk_size={chunk_size}")
+
+    results: Dict[str, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(_build_one_category, cs, cn, rr) for (cs, cn, rr) in cat_inputs]
+        # for fut in as_completed(futures):
+        #     cs, cat_obj = fut.result()  # exceptions bubble up (good)
+        #     results[cs] = cat_obj
+
+        for fut in as_completed(futures):
+            cs, cat_obj, calls = fut.result()
+            llm_calls_total += calls
+            results[cs] = cat_obj
+
+    logger.info(f"LLM summary: categories={len(cat_inputs)} llm_calls={llm_calls_total}")
+    # preserve original category order
+    for cat_slug, _, _ in cat_inputs:
+        team_configs["categories"][cat_slug] = results[cat_slug]
 
     return team_configs
+
 
 
 # --------------------------

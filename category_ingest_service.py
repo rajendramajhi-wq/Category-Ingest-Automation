@@ -165,29 +165,35 @@ def _first_present(payload: dict, keys: list[str]):
 
 
 def _pick_mongo_uri_from_payload(payload: dict) -> tuple[Optional[int], Optional[str]]:
+    # Still allow direct URL override (future)
     direct = payload.get("mongo_uri") or payload.get("mongoUri") or payload.get("mongodb_url") or payload.get("mongo_url")
     if isinstance(direct, str) and direct.strip():
         return None, direct.strip()
 
-    flag = _first_present(payload, ["mongo_target", "mongoTarget", "mongo_server", "db_target"])
+    # ✅ NEW: analysis_type (1/2). (Optional: keep old mongo_target keys for backward compat.)
+    flag = _first_present(payload, [
+        "analysis_type", "analysisType",
+        # (optional backward compat)
+        "mongo_target", "mongoTarget", "mongo_server", "db_target",
+    ])
     if flag is None:
         return None, None
 
     s = str(flag).strip().lower()
-    if s in ("0", "false"):
-        flag_int = 0
-    elif s in ("1", "true"):
+    # Accept both numeric and friendly strings (optional)
+    if s in ("1", "mongo_x", "mongo-x", "x"):
         flag_int = 1
+    elif s in ("2", "mongo_y", "mongo-y", "y"):
+        flag_int = 2
     else:
         flag_int = int(s)
 
-    if flag_int == 0:
-        return 0, (os.environ.get("MONGO_URI_X") or os.environ.get("MONGO_URI_0"))
     if flag_int == 1:
-        return 1, (os.environ.get("MONGO_URI_Y") or os.environ.get("MONGO_URI_1"))
+        return 1, (os.environ.get("MONGO_URI_X") or os.environ.get("MONGO_URI_1"))
+    if flag_int == 2:
+        return 2, (os.environ.get("MONGO_URI_Y") or os.environ.get("MONGO_URI_2"))
 
-    raise HTTPException(status_code=400, detail="mongo_target must be 0 or 1")
-
+    raise HTTPException(status_code=400, detail="analysis_type must be 1 or 2")
 
 
 def _require_api_key(x_api_key: Optional[str]) -> None:
@@ -459,7 +465,7 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
     opts: Dict[str, Any] = {
         "env": str(payload.get("env") or "dev"),
         "out_dir": str(payload.get("out_dir") or "out"),
-        "chunk_size": _parse_int(payload.get("chunk_size"), 25),
+        "chunk_size": _parse_int(payload.get("chunk_size"), 40),
         "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
         "execute": _parse_bool(payload.get("execute"), default=False),
         "backup": _parse_bool(payload.get("backup"), default=True),
@@ -486,20 +492,28 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
 
 
 
-    mongo_flag, mongo_uri = _pick_mongo_uri_from_payload(payload)
+    # analysis_type, mongo_flag, mongo_uri = _pick_mongo_uri_from_payload(payload)
+    analysis_type, mongo_uri = _pick_mongo_uri_from_payload(payload)
 
     # If they provided mongo_target but env var missing:
-    if mongo_flag is not None and not mongo_uri:
+    # if mongo_flag is not None and not mongo_uri:
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail=f"mongo_target={mongo_flag} provided but no matching env var set. "
+    #             f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_0/MONGO_URI_1)."
+    #     )
+
+    if analysis_type is not None and not mongo_uri:
         raise HTTPException(
             status_code=400,
-            detail=f"mongo_target={mongo_flag} provided but no matching env var set. "
-                f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_0/MONGO_URI_1)."
+            detail=f"analysis_type={analysis_type} provided but no matching env var set. "
+                f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_1/MONGO_URI_2)."
         )
 
     opts = {
         "env": str(payload.get("env") or "dev"),
         "out_dir": str(payload.get("out_dir") or "out"),
-        "chunk_size": _parse_int(payload.get("chunk_size"), 25),
+        "chunk_size": _parse_int(payload.get("chunk_size"), 40),
         "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
         "execute": _parse_bool(payload.get("execute"), default=False),
         "backup": _parse_bool(payload.get("backup"), default=True),
@@ -508,10 +522,14 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
     }
 
     # optionally store in JOBS + logs
-    JOBS[job_id]["mongo_target"] = mongo_flag
-    JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
-    logger.info("JOB=%s mongo_target=%s mongo=%s", job_id, mongo_flag, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
+    # JOBS[job_id]["mongo_target"] = mongo_flag
+    # JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
+    # logger.info("JOB=%s mongo_target=%s mongo=%s", job_id, mongo_flag, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
 
+
+    JOBS[job_id]["analysis_type"] = analysis_type
+    JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
+    logger.info("JOB=%s analysis_type=%s mongo=%s", job_id, analysis_type, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
 
 
 
