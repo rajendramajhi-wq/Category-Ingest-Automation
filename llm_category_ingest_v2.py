@@ -575,24 +575,34 @@ def write_mongosh(
         f.write("\n".join(js))
 
 
-def execute_mongosh(env: str, out_file: str) -> None:
-    mongo_uri = os.environ.get(f"MONGO_URI_{env.upper()}") or os.environ.get("MONGO_URI")
-    if not mongo_uri:
+
+def execute_mongosh(env: str, out_file: str, mongo_uri: Optional[str] = None) -> None:
+    uri = (mongo_uri or "").strip() or os.environ.get(f"MONGO_URI_{env.upper()}") or os.environ.get("MONGO_URI")
+    if not uri:
         raise ValueError(
-            f"Set MONGO_URI_{env.upper()} (or MONGO_URI). Example: export MONGO_URI_DEV=mongodb://localhost:27017"
+            f"Provide mongo_uri or set MONGO_URI_{env.upper()} (or MONGO_URI). "
+            f"Example: export MONGO_URI_DEV=mongodb://localhost:27017"
         )
 
+    # ✅ log what we are ACTUALLY using (super useful for debugging)
+    print(f"[execute_mongosh] Using Mongo URI: {uri}")
+
     if shutil.which("mongosh"):
-        subprocess.run(["mongosh", mongo_uri, out_file], check=True)
+        subprocess.run(["mongosh", uri, out_file], check=True)
         return
 
     container = os.environ.get("MONGO_DOCKER_CONTAINER", "mongo-test")
     if shutil.which("docker") is None:
-        raise FileNotFoundError("mongosh not found and docker not available. Install mongosh or run local Mongo via Docker.")
+        raise FileNotFoundError("mongosh not found and docker not available. Install mongosh or run via Docker.")
+
+    # Translate localhost -> host.docker.internal but keep the port (27018 stays 27018)
+    docker_host = os.environ.get("MONGO_DOCKER_HOST", "host.docker.internal")
+    docker_uri = uri.replace("mongodb://localhost", f"mongodb://{docker_host}")
+    docker_uri = docker_uri.replace("mongodb://127.0.0.1", f"mongodb://{docker_host}")
 
     with open(out_file, "rb") as f:
         subprocess.run(
-            ["docker", "exec", "-i", container, "mongosh", "mongodb://localhost:27017"],
+            ["docker", "exec", "-i", container, "mongosh", docker_uri],
             stdin=f,
             check=True,
         )
@@ -629,6 +639,7 @@ def ingest_from_payload(
     execute: bool = False,
     backup: bool = True,
     use_llm: bool = True,
+    mongo_uri: Optional[str] = None,
 ) -> IngestResult:
     """
     Backend entry:
@@ -696,7 +707,7 @@ def ingest_from_payload(
     write_mongosh(out_file, company_id, team_id, team_configs, team_categories, backup=backup)
 
     if execute:
-        execute_mongosh(env=env, out_file=out_file)
+        execute_mongosh(env=env, out_file=out_file, mongo_uri=mongo_uri)
 
     return IngestResult(out_file=out_file, company_id=company_id, team_id=team_id)
 
