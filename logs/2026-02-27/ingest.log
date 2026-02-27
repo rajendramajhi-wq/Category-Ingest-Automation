@@ -1,0 +1,256 @@
+2026-02-27 12:53:37 IST | INFO | JOB=21ce6edadc084da1815c231174a4ab90 ✅ payload received; queued (rows=28)
+2026-02-27 12:53:37 IST | INFO | JOB=21ce6edadc084da1815c231174a4ab90 mongo_target=0 mongo=mongodb://localhost:27017
+2026-02-27 12:53:37 IST | INFO | JOB=21ce6edadc084da1815c231174a4ab90 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 12:53:37 IST | INFO | REQ=0bbb6e0801a0 POST /ingest -> 202 (14.1 ms) ip=103.91.134.218
+2026-02-27 12:54:46 IST | ERROR | JOB=21ce6edadc084da1815c231174a4ab90 ❌ failed: Command '['docker', 'exec', '-i', 'mongo-test', 'mongosh', 'mongodb://host.docker.internal:27017']' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/home/rajendra/projects/category_ingest_automation/category_ingest_service.py", line 318, in _run_ingest_job
+    res = ingest_from_payload(payload, **opts)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/llm_category_ingest_v2.py", line 942, in ingest_from_payload
+    execute_mongosh(env=env, out_file=out_file, mongo_uri=mongo_uri)
+  File "/home/rajendra/projects/category_ingest_automation/llm_category_ingest_v2.py", line 836, in execute_mongosh
+    subprocess.run(
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['docker', 'exec', '-i', 'mongo-test', 'mongosh', 'mongodb://host.docker.internal:27017']' returned non-zero exit status 1.
+2026-02-27 12:59:44 IST | INFO | JOB=2fa53a97e48242af8db0ada18b6c41e7 ✅ payload received; queued (rows=28)
+2026-02-27 12:59:44 IST | INFO | JOB=2fa53a97e48242af8db0ada18b6c41e7 mongo_target=0 mongo=mongodb://localhost:27017
+2026-02-27 12:59:44 IST | INFO | JOB=2fa53a97e48242af8db0ada18b6c41e7 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 12:59:44 IST | INFO | REQ=8bc02981f007 POST /ingest -> 202 (3.7 ms) ip=103.91.134.218
+2026-02-27 13:00:57 IST | ERROR | JOB=2fa53a97e48242af8db0ada18b6c41e7 ❌ failed: Command '['docker', 'exec', '-i', 'mongo-test', 'mongosh', 'mongodb://host.docker.internal:27017']' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/home/rajendra/projects/category_ingest_automation/category_ingest_service.py", line 318, in _run_ingest_job
+    res = ingest_from_payload(payload, **opts)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/llm_category_ingest_v2.py", line 942, in ingest_from_payload
+    execute_mongosh(env=env, out_file=out_file, mongo_uri=mongo_uri)
+  File "/home/rajendra/projects/category_ingest_automation/llm_category_ingest_v2.py", line 836, in execute_mongosh
+    subprocess.run(
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['docker', 'exec', '-i', 'mongo-test', 'mongosh', 'mongodb://host.docker.internal:27017']' returned non-zero exit status 1.
+2026-02-27 13:06:06 IST | INFO | JOB=450f1922d15f44cfa28bda37274dfe93 ✅ payload received; queued (rows=28)
+2026-02-27 13:06:06 IST | INFO | JOB=450f1922d15f44cfa28bda37274dfe93 mongo_target=0 mongo=mongodb://localhost:27017
+2026-02-27 13:06:06 IST | INFO | JOB=450f1922d15f44cfa28bda37274dfe93 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 13:06:06 IST | INFO | REQ=94905deb3bc4 POST /ingest -> 202 (6.1 ms) ip=103.91.134.218
+2026-02-27 13:07:19 IST | INFO | JOB=450f1922d15f44cfa28bda37274dfe93 ✅ completed company_id=47 team_id=51 out_file=out/ingest_company47_team51_450f1922d15f44cfa28bda37274dfe93.mongosh elapsed=73.23s
+2026-02-27 14:03:52 IST | INFO | JOB=1e411d6eb2474f528c9bab36fbd762e1 ✅ payload received; queued (rows=28)
+2026-02-27 14:03:52 IST | INFO | JOB=1e411d6eb2474f528c9bab36fbd762e1 mongo_target=1 mongo=mongodb://localhost:27018
+2026-02-27 14:03:52 IST | INFO | JOB=1e411d6eb2474f528c9bab36fbd762e1 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 14:03:52 IST | INFO | REQ=424f9eea252d POST /ingest -> 202 (8.7 ms) ip=103.91.134.218
+2026-02-27 14:03:52 IST | INFO | LLM parallel max_workers=3 categories=8 chunk_size=25
+2026-02-27 14:04:04 IST | INFO | LLM call done cat=Conversation Quality rows=2 took=12.19s
+2026-02-27 14:04:05 IST | INFO | LLM call done cat=Closing & Next Steps rows=3 took=12.56s
+2026-02-27 14:04:16 IST | INFO | LLM call done cat=Compliance & Mandatory Disclosures rows=3 took=23.58s
+2026-02-27 14:04:24 IST | INFO | LLM call done cat=Greeting & Professionalism rows=3 took=19.38s
+2026-02-27 14:04:26 IST | INFO | LLM call done cat=Customer Discovery & Qualification rows=5 took=21.61s
+2026-02-27 14:04:43 IST | INFO | LLM call done cat=Objection Handling rows=3 took=27.73s
+2026-02-27 14:04:57 IST | INFO | LLM call done cat=Pitch Content Accuracy rows=4 took=32.58s
+2026-02-27 14:05:04 IST | INFO | LLM call done cat=Product Mapping & Pitch rows=5 took=38.47s
+2026-02-27 14:05:04 IST | INFO | LLM summary: categories=8 llm_calls=8
+2026-02-27 14:05:10 IST | INFO | JOB=1e411d6eb2474f528c9bab36fbd762e1 ✅ completed company_id=47 team_id=51 out_file=out/ingest_company47_team51_1e411d6eb2474f528c9bab36fbd762e1.mongosh elapsed=78.68s
+2026-02-27 14:09:16 IST | INFO | JOB=e31bfae1c3114705949e4ed2873a29b3 ✅ payload received; queued (rows=28)
+2026-02-27 14:09:16 IST | INFO | JOB=e31bfae1c3114705949e4ed2873a29b3 mongo_target=1 mongo=mongodb://localhost:27018
+2026-02-27 14:09:16 IST | INFO | JOB=e31bfae1c3114705949e4ed2873a29b3 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 14:09:16 IST | INFO | REQ=83a40d6b9829 POST /ingest -> 202 (5.4 ms) ip=103.91.134.218
+2026-02-27 14:09:16 IST | INFO | LLM parallel max_workers=4 categories=8 chunk_size=25
+2026-02-27 14:09:26 IST | INFO | LLM call done cat=Conversation Quality rows=2 took=9.97s
+2026-02-27 14:09:27 IST | INFO | LLM call done cat=Closing & Next Steps rows=3 took=10.81s
+2026-02-27 14:09:27 IST | INFO | LLM call done cat=Compliance & Mandatory Disclosures rows=3 took=11.79s
+2026-02-27 14:09:31 IST | INFO | LLM call done cat=Customer Discovery & Qualification rows=5 took=15.16s
+2026-02-27 14:09:40 IST | INFO | LLM call done cat=Greeting & Professionalism rows=3 took=13.92s
+2026-02-27 14:09:45 IST | INFO | LLM call done cat=Objection Handling rows=3 took=18.46s
+2026-02-27 14:09:45 IST | INFO | LLM call done cat=Pitch Content Accuracy rows=4 took=17.75s
+2026-02-27 14:09:53 IST | INFO | LLM call done cat=Product Mapping & Pitch rows=5 took=22.59s
+2026-02-27 14:09:53 IST | INFO | LLM summary: categories=8 llm_calls=8
+2026-02-27 14:09:59 IST | INFO | JOB=e31bfae1c3114705949e4ed2873a29b3 ✅ completed company_id=57 team_id=51 out_file=out/ingest_company57_team51_e31bfae1c3114705949e4ed2873a29b3.mongosh elapsed=43.31s
+2026-02-27 15:29:48 IST | INFO | JOB=732eff47b7a246468645e196acd50a75 ✅ payload received; queued (rows=28)
+2026-02-27 15:29:48 IST | ERROR | REQ=d2257e4d0c33 ❌ unhandled exception method=POST path=/ingest ip=103.91.134.218
+Traceback (most recent call last):
+  File "/home/rajendra/projects/category_ingest_automation/category_ingest_service.py", line 373, in log_ingest_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/fastapi/routing.py", line 431, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/myenv/lib/python3.12/site-packages/fastapi/routing.py", line 313, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajendra/projects/category_ingest_automation/category_ingest_service.py", line 495, in ingest
+    analysis_type, mongo_flag, mongo_uri = _pick_mongo_uri_from_payload(payload)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 3, got 2)
+2026-02-27 15:29:48 IST | INFO | REQ=d2257e4d0c33 POST /ingest -> 500 (15.6 ms) ip=103.91.134.218
+2026-02-27 15:31:25 IST | INFO | JOB=0b906d15003a44eea2b104c5e5982208 ✅ payload received; queued (rows=28)
+2026-02-27 15:31:25 IST | INFO | JOB=0b906d15003a44eea2b104c5e5982208 analysis_type=1 mongo=mongodb://localhost:27017
+2026-02-27 15:31:25 IST | INFO | JOB=0b906d15003a44eea2b104c5e5982208 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:31:25 IST | INFO | REQ=1c64c83fb9ef POST /ingest -> 202 (4.0 ms) ip=103.91.134.218
+2026-02-27 15:31:25 IST | INFO | LLM parallel max_workers=4 categories=8 chunk_size=25
+2026-02-27 15:31:36 IST | INFO | LLM call done cat=Conversation Quality rows=2 took=9.98s
+2026-02-27 15:31:42 IST | INFO | LLM call done cat=Closing & Next Steps rows=3 took=16.61s
+2026-02-27 15:31:47 IST | INFO | LLM call done cat=Compliance & Mandatory Disclosures rows=3 took=20.93s
+2026-02-27 15:31:54 IST | INFO | LLM call done cat=Customer Discovery & Qualification rows=5 took=28.40s
+2026-02-27 15:31:54 IST | INFO | LLM call done cat=Greeting & Professionalism rows=3 took=18.43s
+2026-02-27 15:31:58 IST | INFO | LLM call done cat=Objection Handling rows=3 took=15.85s
+2026-02-27 15:32:13 IST | INFO | LLM call done cat=Pitch Content Accuracy rows=4 took=26.29s
+2026-02-27 15:32:22 IST | INFO | LLM call done cat=Product Mapping & Pitch rows=5 took=28.43s
+2026-02-27 15:32:22 IST | INFO | LLM summary: categories=8 llm_calls=8
+2026-02-27 15:32:31 IST | INFO | JOB=0b906d15003a44eea2b104c5e5982208 ✅ completed company_id=10 team_id=51 out_file=out/ingest_company10_team51_0b906d15003a44eea2b104c5e5982208.mongosh elapsed=65.39s
+2026-02-27 15:34:17 IST | INFO | JOB=18149d7908b54e979567593d4ad3008d ✅ payload received; queued (rows=28)
+2026-02-27 15:34:17 IST | INFO | JOB=18149d7908b54e979567593d4ad3008d analysis_type=2 mongo=mongodb://localhost:27018
+2026-02-27 15:34:17 IST | INFO | JOB=18149d7908b54e979567593d4ad3008d ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:34:17 IST | INFO | REQ=367171770562 POST /ingest -> 202 (6.2 ms) ip=103.91.134.218
+2026-02-27 15:34:17 IST | INFO | LLM parallel max_workers=4 categories=8 chunk_size=25
+2026-02-27 15:34:29 IST | INFO | LLM call done cat=Conversation Quality rows=2 took=11.79s
+2026-02-27 15:34:35 IST | INFO | LLM call done cat=Closing & Next Steps rows=3 took=17.05s
+2026-02-27 15:34:41 IST | INFO | LLM call done cat=Greeting & Professionalism rows=3 took=11.30s
+2026-02-27 15:34:42 IST | INFO | LLM call done cat=Compliance & Mandatory Disclosures rows=3 took=24.85s
+2026-02-27 15:34:46 IST | INFO | LLM call done cat=Objection Handling rows=3 took=11.51s
+2026-02-27 15:34:47 IST | INFO | LLM call done cat=Customer Discovery & Qualification rows=5 took=29.78s
+2026-02-27 15:35:04 IST | INFO | LLM call done cat=Product Mapping & Pitch rows=5 took=21.26s
+2026-02-27 15:35:08 IST | INFO | LLM call done cat=Pitch Content Accuracy rows=4 took=27.71s
+2026-02-27 15:35:08 IST | INFO | LLM summary: categories=8 llm_calls=8
+2026-02-27 15:35:16 IST | INFO | JOB=18149d7908b54e979567593d4ad3008d ✅ completed company_id=10 team_id=51 out_file=out/ingest_company10_team51_18149d7908b54e979567593d4ad3008d.mongosh elapsed=58.59s
+2026-02-27 15:38:46 IST | INFO | JOB=c585d523779a421c815639c7c15e29bd ✅ payload received; queued (rows=16)
+2026-02-27 15:38:46 IST | INFO | JOB=c585d523779a421c815639c7c15e29bd analysis_type=2 mongo=mongodb://localhost:27018
+2026-02-27 15:38:46 IST | INFO | JOB=c585d523779a421c815639c7c15e29bd ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:38:46 IST | INFO | REQ=af64274ef73d POST /ingest -> 202 (5.8 ms) ip=103.91.134.218
+2026-02-27 15:38:46 IST | INFO | LLM parallel max_workers=4 categories=10 chunk_size=25
+2026-02-27 15:38:54 IST | INFO | LLM call done cat=Resolution (CE) - Knowledge Gap rows=1 took=7.90s
+2026-02-27 15:38:54 IST | INFO | LLM call done cat=Knowledge Gap rows=1 took=8.05s
+2026-02-27 15:38:56 IST | INFO | LLM call done cat=Intent rows=1 took=9.86s
+2026-02-27 15:39:01 IST | INFO | LLM call done cat=Resolution (CE) - Intent rows=2 took=14.63s
+2026-02-27 15:39:08 IST | INFO | LLM call done cat=Seller Experience - Compliance rows=2 took=14.10s
+2026-02-27 15:39:08 IST | INFO | LLM call done cat=Seller Expectation rows=1 took=14.57s
+2026-02-27 15:39:11 IST | INFO | LLM call done cat=Seller Experience - Knowledge Gap rows=1 took=10.45s
+2026-02-27 15:39:12 IST | INFO | LLM call done cat=Seller Experience - Intent rows=3 took=16.57s
+2026-02-27 15:39:28 IST | INFO | LLM call done cat=Zero tolerance - Compliance rows=3 took=19.60s
+2026-02-27 15:39:39 IST | INFO | LLM call done cat=Seller Experience - SOP Adherence rows=1 took=31.28s
+2026-02-27 15:39:39 IST | INFO | LLM summary: categories=10 llm_calls=10
+2026-02-27 15:39:45 IST | INFO | JOB=c585d523779a421c815639c7c15e29bd ✅ completed company_id=57 team_id=59 out_file=out/ingest_company57_team59_c585d523779a421c815639c7c15e29bd.mongosh elapsed=59.12s
+2026-02-27 15:44:16 IST | INFO | JOB=ac9f2c548b8840d795d9104a68841b17 ✅ payload received; queued (rows=44)
+2026-02-27 15:44:16 IST | INFO | JOB=ac9f2c548b8840d795d9104a68841b17 analysis_type=2 mongo=mongodb://localhost:27018
+2026-02-27 15:44:16 IST | INFO | JOB=ac9f2c548b8840d795d9104a68841b17 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:44:16 IST | INFO | REQ=eded4fbdd135 POST /ingest -> 202 (13.6 ms) ip=103.91.134.218
+2026-02-27 15:44:16 IST | INFO | LLM parallel max_workers=4 categories=15 chunk_size=25
+2026-02-27 15:44:27 IST | INFO | LLM call done cat=Cross sell rows=1 took=10.19s
+2026-02-27 15:44:33 IST | INFO | LLM call done cat=Customer Profiling rows=2 took=16.97s
+2026-02-27 15:44:36 IST | INFO | LLM call done cat=Coverage and Add ons rows=4 took=20.07s
+2026-02-27 15:44:38 IST | INFO | LLM call done cat=Compliance rows=2 took=22.03s
+2026-02-27 15:44:56 IST | INFO | LLM call done cat=Documentation rows=2 took=29.59s
+2026-02-27 15:44:58 IST | INFO | LLM call done cat=Payment and Process rows=3 took=22.00s
+2026-02-27 15:45:01 IST | INFO | LLM call done cat=Policy Details rows=3 took=23.07s
+2026-02-27 15:45:03 IST | INFO | LLM call done cat=Objection Handling rows=6 took=29.76s
+2026-02-27 15:45:15 IST | INFO | LLM call done cat=Pricing rows=3 took=18.61s
+2026-02-27 15:45:19 IST | INFO | LLM call done cat=Script Adherence rows=2 took=15.29s
+2026-02-27 15:45:21 IST | INFO | LLM call done cat=Renewal Pitch rows=2 took=22.77s
+2026-02-27 15:45:28 IST | INFO | LLM call done cat=Risk and Claims rows=3 took=26.87s
+2026-02-27 15:45:33 IST | INFO | LLM call done cat=Script Deviation Handling rows=3 took=18.41s
+2026-02-27 15:45:35 IST | INFO | LLM call done cat=Vehicle Details rows=3 took=16.93s
+2026-02-27 15:45:42 IST | INFO | LLM call done cat=Violation Handling rows=5 took=20.80s
+2026-02-27 15:45:42 IST | INFO | LLM summary: categories=15 llm_calls=15
+2026-02-27 15:45:56 IST | INFO | JOB=ac9f2c548b8840d795d9104a68841b17 ✅ completed company_id=57 team_id=59 out_file=out/ingest_company57_team59_ac9f2c548b8840d795d9104a68841b17.mongosh elapsed=100.03s
+2026-02-27 15:52:20 IST | INFO | JOB=2cad444dd49e479f96d0f707b0fcc556 ✅ payload received; queued (rows=44)
+2026-02-27 15:52:20 IST | INFO | JOB=2cad444dd49e479f96d0f707b0fcc556 analysis_type=1 mongo=mongodb://localhost:27017
+2026-02-27 15:52:20 IST | INFO | JOB=2cad444dd49e479f96d0f707b0fcc556 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:52:20 IST | INFO | REQ=0ca16eeaa9bb POST /ingest -> 202 (6.1 ms) ip=103.91.134.218
+2026-02-27 15:52:20 IST | INFO | LLM parallel max_workers=4 categories=15 chunk_size=40
+2026-02-27 15:52:39 IST | INFO | LLM call done cat=Cross sell rows=1 took=19.13s
+2026-02-27 15:52:39 IST | INFO | LLM call done cat=Compliance rows=2 took=19.29s
+2026-02-27 15:52:41 IST | INFO | LLM call done cat=Customer Profiling rows=2 took=21.37s
+2026-02-27 15:52:45 IST | INFO | LLM call done cat=Coverage and Add ons rows=4 took=25.31s
+2026-02-27 15:52:53 IST | INFO | LLM call done cat=Documentation rows=2 took=13.49s
+2026-02-27 15:53:04 IST | INFO | LLM call done cat=Objection Handling rows=6 took=24.39s
+2026-02-27 15:53:06 IST | INFO | LLM call done cat=Policy Details rows=3 took=20.97s
+2026-02-27 15:53:08 IST | INFO | LLM call done cat=Payment and Process rows=3 took=26.81s
+2026-02-27 15:53:13 IST | INFO | LLM call done cat=Pricing rows=3 took=20.58s
+2026-02-27 15:53:24 IST | INFO | LLM call done cat=Renewal Pitch rows=2 took=20.39s
+2026-02-27 15:53:30 IST | INFO | LLM call done cat=Script Adherence rows=2 took=21.80s
+2026-02-27 15:53:31 IST | INFO | LLM call done cat=Script Deviation Handling rows=3 took=17.97s
+2026-02-27 15:53:32 IST | INFO | LLM call done cat=Risk and Claims rows=3 took=25.64s
+2026-02-27 15:53:57 IST | INFO | LLM call done cat=Vehicle Details rows=3 took=33.35s
+2026-02-27 15:53:59 IST | INFO | LLM call done cat=Violation Handling rows=5 took=29.00s
+2026-02-27 15:53:59 IST | INFO | LLM summary: categories=15 llm_calls=15
+2026-02-27 15:54:12 IST | INFO | JOB=2cad444dd49e479f96d0f707b0fcc556 ✅ completed company_id=21 team_id=59 out_file=out/ingest_company21_team59_2cad444dd49e479f96d0f707b0fcc556.mongosh elapsed=112.47s
+2026-02-27 15:58:07 IST | INFO | JOB=b07e5e0473f14603b7ecf322d5f0e6a4 ✅ payload received; queued (rows=44)
+2026-02-27 15:58:07 IST | INFO | JOB=b07e5e0473f14603b7ecf322d5f0e6a4 analysis_type=1 mongo=mongodb://localhost:27017
+2026-02-27 15:58:07 IST | INFO | JOB=b07e5e0473f14603b7ecf322d5f0e6a4 ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:58:07 IST | INFO | REQ=62992dd5309a POST /ingest -> 202 (17.2 ms) ip=103.91.134.218
+2026-02-27 15:58:07 IST | INFO | LLM parallel max_workers=4 categories=15 chunk_size=40
+2026-02-27 15:58:17 IST | INFO | LLM call done cat=Cross sell rows=1 took=9.94s
+2026-02-27 15:58:19 IST | INFO | LLM call done cat=Compliance rows=2 took=12.00s
+2026-02-27 15:58:26 IST | INFO | LLM call done cat=Coverage and Add ons rows=4 took=19.35s
+2026-02-27 15:58:26 IST | INFO | LLM call done cat=Customer Profiling rows=2 took=19.38s
+2026-02-27 15:58:32 IST | INFO | LLM call done cat=Documentation rows=2 took=15.35s
+2026-02-27 15:59:08 IST | INFO | JOB=340945e30b1041878ee810fb3c1276da ✅ payload received; queued (rows=44)
+2026-02-27 15:59:08 IST | INFO | JOB=340945e30b1041878ee810fb3c1276da analysis_type=1 mongo=mongodb://localhost:27017
+2026-02-27 15:59:08 IST | INFO | JOB=340945e30b1041878ee810fb3c1276da ⏳ processing started (execute=True use_llm=True)
+2026-02-27 15:59:08 IST | INFO | REQ=66a92c68421d POST /ingest -> 202 (4.4 ms) ip=103.91.134.218
+2026-02-27 15:59:09 IST | INFO | LLM parallel max_workers=5 categories=15 chunk_size=40
+2026-02-27 15:59:18 IST | INFO | LLM call done cat=Cross sell rows=1 took=9.82s
+2026-02-27 15:59:25 IST | INFO | LLM call done cat=Documentation rows=2 took=16.47s
+2026-02-27 15:59:26 IST | INFO | LLM call done cat=Customer Profiling rows=2 took=17.71s
+2026-02-27 15:59:33 IST | INFO | LLM call done cat=Compliance rows=2 took=24.05s
+2026-02-27 15:59:36 IST | INFO | LLM call done cat=Coverage and Add ons rows=4 took=27.72s
+2026-02-27 15:59:49 IST | INFO | LLM call done cat=Payment and Process rows=3 took=23.47s
+2026-02-27 15:59:52 IST | INFO | LLM call done cat=Pricing rows=3 took=19.03s
+2026-02-27 15:59:52 IST | INFO | LLM call done cat=Objection Handling rows=6 took=33.32s
+2026-02-27 15:59:54 IST | INFO | LLM call done cat=Renewal Pitch rows=2 took=17.55s
+2026-02-27 15:59:55 IST | INFO | LLM call done cat=Policy Details rows=3 took=28.26s
+2026-02-27 16:00:08 IST | INFO | LLM call done cat=Script Adherence rows=2 took=16.42s
+2026-02-27 16:00:12 IST | INFO | LLM call done cat=Script Deviation Handling rows=3 took=20.62s
+2026-02-27 16:00:13 IST | INFO | LLM call done cat=Risk and Claims rows=3 took=24.64s
+2026-02-27 16:00:18 IST | INFO | LLM call done cat=Vehicle Details rows=3 took=23.71s
+2026-02-27 16:00:29 IST | INFO | LLM call done cat=Violation Handling rows=5 took=34.02s
+2026-02-27 16:00:29 IST | INFO | LLM summary: categories=15 llm_calls=15
+2026-02-27 16:00:42 IST | INFO | JOB=340945e30b1041878ee810fb3c1276da ✅ completed company_id=5 team_id=59 out_file=out/ingest_company5_team59_340945e30b1041878ee810fb3c1276da.mongosh elapsed=93.99s
+2026-02-27 16:31:21 IST | INFO | JOB=5dd5dc0e65b74cc9a624ca947ad0a14a ✅ payload received; queued (rows=44)
+2026-02-27 16:31:21 IST | INFO | JOB=5dd5dc0e65b74cc9a624ca947ad0a14a analysis_type=1 mongo=mongodb://localhost:27017
+2026-02-27 16:31:21 IST | INFO | JOB=5dd5dc0e65b74cc9a624ca947ad0a14a ⏳ processing started (execute=True use_llm=True)
+2026-02-27 16:31:21 IST | INFO | REQ=fa1d5a2b1bbf POST /ingest -> 202 (6.8 ms) ip=103.91.134.218
+2026-02-27 16:31:21 IST | INFO | LLM parallel max_workers=5 categories=15 chunk_size=40
+2026-02-27 16:31:35 IST | INFO | LLM call done cat=Documentation rows=2 took=14.08s
+2026-02-27 16:31:37 IST | INFO | LLM call done cat=Cross sell rows=1 took=16.01s
+2026-02-27 16:31:38 IST | INFO | LLM call done cat=Compliance rows=2 took=16.57s
+2026-02-27 16:31:38 IST | INFO | LLM call done cat=Customer Profiling rows=2 took=16.65s
+2026-02-27 16:31:55 IST | INFO | LLM call done cat=Coverage and Add ons rows=4 took=34.12s
+2026-02-27 16:31:56 IST | INFO | LLM call done cat=Pricing rows=3 took=18.52s
+2026-02-27 16:32:01 IST | INFO | LLM call done cat=Objection Handling rows=6 took=25.61s
+2026-02-27 16:32:02 IST | INFO | LLM call done cat=Policy Details rows=3 took=24.27s
+2026-02-27 16:32:05 IST | INFO | LLM call done cat=Payment and Process rows=3 took=27.33s
+2026-02-27 16:32:15 IST | INFO | LLM call done cat=Renewal Pitch rows=2 took=19.67s
+2026-02-27 16:32:16 IST | INFO | LLM call done cat=Risk and Claims rows=3 took=19.72s
+2026-02-27 16:32:17 IST | INFO | LLM call done cat=Script Adherence rows=2 took=16.23s
+2026-02-27 16:32:27 IST | INFO | LLM call done cat=Script Deviation Handling rows=3 took=25.31s
+2026-02-27 16:32:35 IST | INFO | LLM call done cat=Vehicle Details rows=3 took=29.96s
+2026-02-27 16:32:43 IST | INFO | LLM call done cat=Violation Handling rows=5 took=28.00s
+2026-02-27 16:32:43 IST | INFO | LLM summary: categories=15 llm_calls=15
+2026-02-27 16:32:54 IST | INFO | JOB=5dd5dc0e65b74cc9a624ca947ad0a14a ✅ completed company_id=6 team_id=59 out_file=out/ingest_company6_team59_5dd5dc0e65b74cc9a624ca947ad0a14a.mongosh elapsed=93.16s

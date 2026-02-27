@@ -1,0 +1,31 @@
+2026-02-26 12:08:47 IST | INFO | JOB=f951a39dbac7469187ce270ff42e2abf ✅ payload received; queued (rows=28)
+2026-02-26 12:08:47 IST | INFO | JOB=f951a39dbac7469187ce270ff42e2abf ⏳ processing started (execute=True use_llm=True)
+2026-02-26 12:12:13 IST | INFO | JOB=f951a39dbac7469187ce270ff42e2abf ✅ completed company_id=47 team_id=51 out_file=out/ingest_company47_team51_f951a39dbac7469187ce270ff42e2abf.mongosh elapsed=205.79s
+2026-02-26 12:26:49 IST | INFO | JOB=e375b24499494874bbd4b8ac6023f289 ✅ payload received; queued (rows=16)
+2026-02-26 12:26:49 IST | INFO | JOB=e375b24499494874bbd4b8ac6023f289 ⏳ processing started (execute=True use_llm=True)
+2026-02-26 12:31:52 IST | INFO | JOB=e375b24499494874bbd4b8ac6023f289 ✅ completed company_id=57 team_id=59 out_file=out/ingest_company57_team59_e375b24499494874bbd4b8ac6023f289.mongosh elapsed=303.19s
+2026-02-26 12:36:47 IST | INFO | REQ=14f2585ac238 POST /ingest -> 401 (3.1 ms) ip=103.91.134.218
+2026-02-26 12:39:45 IST | INFO | REQ=eb65acdc3aa2 GET /ingest -> 405 (0.6 ms) ip=103.91.134.218
+2026-02-26 12:49:40 IST | INFO | REQ=49c8eedd0641 POST /ingest -> 401 (1.7 ms) ip=103.91.134.218
+2026-02-26 12:50:04 IST | INFO | REQ=fcb76ff1f13c POST /ingest -> 401 (1.7 ms) ip=103.91.134.218
+2026-02-26 16:41:40 IST | INFO | REQ=aee827e5cf86 POST /ingest -> 401 (7.2 ms) ip=103.91.134.218
+2026-02-26 16:41:54 IST | INFO | JOB=366cf2dba15848dcac274294f208960e ✅ payload received; queued (rows=28)
+2026-02-26 16:41:54 IST | INFO | JOB=366cf2dba15848dcac274294f208960e mongo_target=1 mongo=mongodb://localhost:27018
+2026-02-26 16:41:54 IST | INFO | JOB=366cf2dba15848dcac274294f208960e ⏳ processing started (execute=True use_llm=True)
+2026-02-26 16:41:54 IST | INFO | REQ=d21ab0aade8b POST /ingest -> 202 (64.7 ms) ip=103.91.134.218
+2026-02-26 16:46:45 IST | INFO | JOB=366cf2dba15848dcac274294f208960e ✅ completed company_id=47 team_id=51 out_file=out/ingest_company47_team51_366cf2dba15848dcac274294f208960e.mongosh elapsed=291.13s
+2026-02-26 16:56:05 IST | INFO | JOB=c03323e1c67e4baf802b337ef0a9a9c4 ✅ payload received; queued (rows=28)
+2026-02-26 16:56:05 IST | INFO | JOB=c03323e1c67e4baf802b337ef0a9a9c4 mongo_target=1 mongo=mongodb://localhost:27018
+2026-02-26 16:56:05 IST | INFO | JOB=c03323e1c67e4baf802b337ef0a9a9c4 ⏳ processing started (execute=True use_llm=True)
+2026-02-26 16:56:05 IST | INFO | REQ=6fe42da776f8 POST /ingest -> 202 (4.9 ms) ip=103.91.134.218
+2026-02-26 16:59:21 IST | INFO | JOB=c03323e1c67e4baf802b337ef0a9a9c4 ✅ completed company_id=70 team_id=51 out_file=out/ingest_company70_team51_c03323e1c67e4baf802b337ef0a9a9c4.mongosh elapsed=196.23s
+2026-02-26 17:23:24 IST | INFO | JOB=b1076c9cddb64d30923702b4ccbd5d9e ✅ payload received; queued (rows=28)
+2026-02-26 17:23:24 IST | INFO | JOB=b1076c9cddb64d30923702b4ccbd5d9e mongo_target=1 mongo=mongodb://localhost:27018
+2026-02-26 17:23:24 IST | INFO | JOB=b1076c9cddb64d30923702b4ccbd5d9e ⏳ processing started (execute=True use_llm=True)
+2026-02-26 17:23:24 IST | INFO | REQ=a765845dbefb POST /ingest -> 202 (3.4 ms) ip=103.91.134.218
+2026-02-26 17:27:45 IST | INFO | JOB=b1076c9cddb64d30923702b4ccbd5d9e ✅ completed company_id=70 team_id=51 out_file=out/ingest_company70_team51_b1076c9cddb64d30923702b4ccbd5d9e.mongosh elapsed=260.65s
+2026-02-26 17:28:49 IST | INFO | JOB=9801c36985ac4ff3bdb6db10ed3f6511 ✅ payload received; queued (rows=28)
+2026-02-26 17:28:49 IST | INFO | JOB=9801c36985ac4ff3bdb6db10ed3f6511 mongo_target=0 mongo=mongodb://localhost:27017
+2026-02-26 17:28:49 IST | INFO | JOB=9801c36985ac4ff3bdb6db10ed3f6511 ⏳ processing started (execute=True use_llm=True)
+2026-02-26 17:28:49 IST | INFO | REQ=8f43cc4745e6 POST /ingest -> 202 (2.1 ms) ip=103.91.134.218
+2026-02-26 17:32:34 IST | INFO | JOB=9801c36985ac4ff3bdb6db10ed3f6511 ✅ completed company_id=47 team_id=51 out_file=out/ingest_company47_team51_9801c36985ac4ff3bdb6db10ed3f6511.mongosh elapsed=225.09s
