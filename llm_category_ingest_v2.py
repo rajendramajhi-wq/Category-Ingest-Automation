@@ -845,8 +845,13 @@ def execute_mongosh(env: str, out_file: str, mongo_uri: Optional[str] = None) ->
     # ✅ log what we are ACTUALLY using (super useful for debugging)
     print(f"[execute_mongosh] Using Mongo URI: {uri}")
 
+    # if shutil.which("mongosh"):
+    #     subprocess.run(["mongosh", uri, out_file], check=True)
+    #     return
+    
     if shutil.which("mongosh"):
-        subprocess.run(["mongosh", uri, out_file], check=True)
+        with open(out_file, "rb") as f:
+            subprocess.run(["mongosh", uri], stdin=f, check=True)
         return
 
     container = os.environ.get("MONGO_DOCKER_CONTAINER", "mongo-test")
