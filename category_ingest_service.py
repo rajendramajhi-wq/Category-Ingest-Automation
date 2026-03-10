@@ -1,9 +1,15 @@
-
 """
 category_ingest_service.py
 
 Features:
 - POST /ingest runs synchronously and returns only after the whole process finishes
+- Single-server routing:
+    code=1 -> prod
+    code=2 -> dev
+    analysis_type=1 -> X
+    analysis_type=2 -> Y
+  Final Mongo URI is selected from:
+    PROD_MONGO_URI_X / PROD_MONGO_URI_Y / DEV_MONGO_URI_X / DEV_MONGO_URI_Y
 - Response body returns only final status: success or failure
 - Date-wise IST log folders:
     logs/YYYY-MM-DD/ingest.log
@@ -47,6 +53,7 @@ LOGS_ROOT = os.environ.get("INGEST_LOGS_DIR", "logs")  # change if you want
 
 class ISTFormatter(logging.Formatter):
     """Formatter that prints time in IST."""
+
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
         dt = datetime.fromtimestamp(record.created, tz=IST)
         if datefmt:
@@ -74,7 +81,6 @@ class ISTDailyFolderFileHandler(logging.Handler):
     def _ensure_stream(self) -> None:
         today = self._today_str()
         if self._stream is None or self._current_date != today:
-            # rotate by date folder
             if self._stream is not None:
                 try:
                     self._stream.close()
@@ -82,7 +88,7 @@ class ISTDailyFolderFileHandler(logging.Handler):
                     pass
 
             day_dir = os.path.join(self.base_dir, today)
-            os.makedirs(day_dir, exist_ok=True)  # folder created ONLY when we log
+            os.makedirs(day_dir, exist_ok=True)
             path = os.path.join(day_dir, self.filename)
             self._stream = open(path, "a", encoding="utf-8")
             self._current_date = today
@@ -112,21 +118,21 @@ class ISTDailyFolderFileHandler(logging.Handler):
 def setup_ingest_logger() -> logging.Logger:
     logger = logging.getLogger("ingest")
     logger.setLevel(logging.INFO)
-    logger.propagate = False  # don't duplicate into root logger
+    logger.propagate = False
 
-    # avoid duplicate handlers on --reload
     has_daily = any(isinstance(h, ISTDailyFolderFileHandler) for h in logger.handlers)
     if not has_daily:
         logger.handlers.clear()
 
-        fmt = ISTFormatter("%(asctime)s IST | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        fmt = ISTFormatter(
+            "%(asctime)s IST | %(levelname)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
-        # file handler (date-wise folders)
         fh = ISTDailyFolderFileHandler(LOGS_ROOT, "ingest.log")
         fh.setFormatter(fmt)
         logger.addHandler(fh)
 
-        # also keep console logs (optional)
         sh = logging.StreamHandler()
         sh.setFormatter(fmt)
         logger.addHandler(sh)
@@ -137,14 +143,12 @@ def setup_ingest_logger() -> logging.Logger:
 logger = setup_ingest_logger()
 
 # -------- Job store (in-memory) --------
-# NOTE: resets on restart/reload; good enough for local.
 JOBS: dict[str, dict[str, Any]] = {}
 
 
 # -------- Helpers --------
 
 def _redact_mongo_uri(uri: str) -> str:
-    # Avoid logging credentials
     try:
         p = urlparse(uri)
         host = p.hostname or ""
@@ -162,37 +166,91 @@ def _first_present(payload: dict, keys: list[str]):
     return None
 
 
+def _pick_mongo_uri_from_payload(payload: dict) -> tuple[Optional[str], Optional[int], Optional[str]]:
+    """
+    Returns:
+      selected_env, analysis_type, mongo_uri
 
-def _pick_mongo_uri_from_payload(payload: dict) -> tuple[Optional[int], Optional[str]]:
-    # Still allow direct URL override (future)
-    direct = payload.get("mongo_uri") or payload.get("mongoUri") or payload.get("mongodb_url") or payload.get("mongo_url")
+    code:
+      1 -> prod
+      2 -> dev
+
+    analysis_type:
+      1 -> X
+      2 -> Y
+    """
+
+    # Optional direct override
+    direct = (
+        payload.get("mongo_uri")
+        or payload.get("mongoUri")
+        or payload.get("mongodb_url")
+        or payload.get("mongo_url")
+    )
     if isinstance(direct, str) and direct.strip():
-        return None, direct.strip()
+        return None, None, direct.strip()
 
-    # ✅ NEW: analysis_type (1/2). (Optional: keep old mongo_target keys for backward compat.)
-    flag = _first_present(payload, [
-        "analysis_type", "analysisType",
-        # (optional backward compat)
-        "mongo_target", "mongoTarget", "mongo_server", "db_target",
-    ])
-    if flag is None:
-        return None, None
+    code = _first_present(payload, ["code", "env_code", "envCode", "server_code", "serverCode"])
+    analysis_type = _first_present(
+        payload,
+        [
+            "analysis_type",
+            "analysisType",
+            "mongo_target",
+            "mongoTarget",
+            "mongo_server",
+            "db_target",
+        ],
+    )
 
-    s = str(flag).strip().lower()
-    # Accept both numeric and friendly strings (optional)
+    if code is None:
+        raise HTTPException(status_code=400, detail="code is required and must be 1 or 2")
+
+    if analysis_type is None:
+        raise HTTPException(status_code=400, detail="analysis_type is required and must be 1 or 2")
+
+    try:
+        code_int = int(str(code).strip())
+    except Exception:
+        raise HTTPException(status_code=400, detail="code must be 1 or 2")
+
+    s = str(analysis_type).strip().lower()
     if s in ("1", "mongo_x", "mongo-x", "x"):
-        flag_int = 1
+        at_int = 1
     elif s in ("2", "mongo_y", "mongo-y", "y"):
-        flag_int = 2
+        at_int = 2
     else:
-        flag_int = int(s)
+        try:
+            at_int = int(s)
+        except Exception:
+            raise HTTPException(status_code=400, detail="analysis_type must be 1 or 2")
 
-    if flag_int == 1:
-        return 1, (os.environ.get("MONGO_URI_X") or os.environ.get("MONGO_URI_1"))
-    if flag_int == 2:
-        return 2, (os.environ.get("MONGO_URI_Y") or os.environ.get("MONGO_URI_2"))
+    if code_int == 1:
+        selected_env = "prod"
+        if at_int == 1:
+            uri = (os.environ.get("PROD_MONGO_URI_X") or "").strip()
+        elif at_int == 2:
+            uri = (os.environ.get("PROD_MONGO_URI_Y") or "").strip()
+        else:
+            raise HTTPException(status_code=400, detail="analysis_type must be 1 or 2")
+    elif code_int == 2:
+        selected_env = "dev"
+        if at_int == 1:
+            uri = (os.environ.get("DEV_MONGO_URI_X") or "").strip()
+        elif at_int == 2:
+            uri = (os.environ.get("DEV_MONGO_URI_Y") or "").strip()
+        else:
+            raise HTTPException(status_code=400, detail="analysis_type must be 1 or 2")
+    else:
+        raise HTTPException(status_code=400, detail="code must be 1 or 2")
 
-    raise HTTPException(status_code=400, detail="analysis_type must be 1 or 2")
+    if not uri:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No Mongo URI configured for code={code_int}, analysis_type={at_int}",
+        )
+
+    return selected_env, at_int, uri
 
 
 def _require_api_key(x_api_key: Optional[str]) -> None:
@@ -296,13 +354,21 @@ def _rows_from_csv_bytes(csv_bytes: bytes) -> list[dict[str, Any]]:
             "sub_category_name": str(sub).strip(),
             "max_score": int(float(sc)),
         }
-        if c_cat_slug and r.get(c_cat_slug) is not None and not (isinstance(r.get(c_cat_slug), float) and pd.isna(r.get(c_cat_slug))):
+        if c_cat_slug and r.get(c_cat_slug) is not None and not (
+            isinstance(r.get(c_cat_slug), float) and pd.isna(r.get(c_cat_slug))
+        ):
             row["category_slug"] = str(r.get(c_cat_slug)).strip()
-        if c_sub_slug and r.get(c_sub_slug) is not None and not (isinstance(r.get(c_sub_slug), float) and pd.isna(r.get(c_sub_slug))):
+        if c_sub_slug and r.get(c_sub_slug) is not None and not (
+            isinstance(r.get(c_sub_slug), float) and pd.isna(r.get(c_sub_slug))
+        ):
             row["sub_category_slug"] = str(r.get(c_sub_slug)).strip()
-        if c_desc and r.get(c_desc) is not None and not (isinstance(r.get(c_desc), float) and pd.isna(r.get(c_desc))):
+        if c_desc and r.get(c_desc) is not None and not (
+            isinstance(r.get(c_desc), float) and pd.isna(r.get(c_desc))
+        ):
             row["description"] = str(r.get(c_desc)).strip()
-        if c_prompt and r.get(c_prompt) is not None and not (isinstance(r.get(c_prompt), float) and pd.isna(r.get(c_prompt))):
+        if c_prompt and r.get(c_prompt) is not None and not (
+            isinstance(r.get(c_prompt), float) and pd.isna(r.get(c_prompt))
+        ):
             row["prompt"] = str(r.get(c_prompt)).strip()
 
         rows.append(row)
@@ -344,16 +410,16 @@ def _run_ingest_job(job_id: str, payload: Dict[str, Any], opts: Dict[str, Any]) 
         )
     except Exception as e:
         JOBS[job_id].update(
-            {"status": "error", "stage": "failed", "error": str(e), "elapsed_s": round(time.time() - t0, 2), "finished_at": time.time()}
+            {
+                "status": "error",
+                "stage": "failed",
+                "error": str(e),
+                "elapsed_s": round(time.time() - t0, 2),
+                "finished_at": time.time(),
+            }
         )
         logger.exception("JOB=%s ❌ failed: %s", job_id, str(e))
 
-
-
-
-
-# import time
-# import uuid
 
 @app.middleware("http")
 async def log_ingest_requests(request: Request, call_next):
@@ -362,17 +428,15 @@ async def log_ingest_requests(request: Request, call_next):
     - 405 (method not allowed)
     - 401 (unauthorized)
     - 500 (unhandled errors)
-    Logs go to your IST date-wise folder via the same `logger`.
     """
     t0 = time.time()
-    rid = uuid.uuid4().hex[:12]  # short request id for tracing
+    rid = uuid.uuid4().hex[:12]
 
     response = None
     try:
         response = await call_next(request)
         return response
     except Exception:
-        # If something truly crashes, log it (will show as 500)
         logger.exception(
             "REQ=%s ❌ unhandled exception method=%s path=%s ip=%s",
             rid,
@@ -382,7 +446,6 @@ async def log_ingest_requests(request: Request, call_next):
         )
         raise
     finally:
-        # This will run for 401/405 too (as long as FastAPI returns a response)
         if request.url.path.startswith("/ingest"):
             status = response.status_code if response is not None else 500
             ms = (time.time() - t0) * 1000.0
@@ -397,22 +460,7 @@ async def log_ingest_requests(request: Request, call_next):
             )
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # -------- Routes --------
-
-
 
 @app.get("/health")
 def health():
@@ -476,16 +524,10 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
 
         logger.info("JOB=%s ✅ payload received; processing started (rows=%s)", job_id, row_count)
 
-        analysis_type, mongo_uri = _pick_mongo_uri_from_payload(payload)
-        if analysis_type is not None and not mongo_uri:
-            raise HTTPException(
-                status_code=400,
-                detail=f"analysis_type={analysis_type} provided but no matching env var set. "
-                    f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_1/MONGO_URI_2)."
-            )
+        selected_env, analysis_type, mongo_uri = _pick_mongo_uri_from_payload(payload)
 
         opts = {
-            "env": str(payload.get("env") or "dev"),
+            "env": str(payload.get("env") or selected_env or "dev"),
             "out_dir": str(payload.get("out_dir") or "out"),
             "chunk_size": _parse_int(payload.get("chunk_size"), 40),
             "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
@@ -495,9 +537,19 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
             "mongo_uri": mongo_uri,
         }
 
+        JOBS[job_id]["code"] = _first_present(payload, ["code", "env_code", "envCode", "server_code", "serverCode"])
+        JOBS[job_id]["selected_env"] = selected_env
         JOBS[job_id]["analysis_type"] = analysis_type
         JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
-        logger.info("JOB=%s analysis_type=%s mongo=%s", job_id, analysis_type, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
+
+        logger.info(
+            "JOB=%s code=%s selected_env=%s analysis_type=%s mongo=%s",
+            job_id,
+            JOBS[job_id]["code"],
+            selected_env,
+            analysis_type,
+            _redact_mongo_uri(mongo_uri) if mongo_uri else None,
+        )
 
         res = ingest_from_payload(payload, **opts)
 
@@ -513,6 +565,7 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
                 "finished_at": time.time(),
             }
         )
+
         logger.info(
             "JOB=%s ✅ completed company_id=%s team_id=%s out_file=%s elapsed=%.2fs",
             job_id,
@@ -521,7 +574,26 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
             res.out_file,
             (time.time() - t0),
         )
+
         return JSONResponse({"status": "success", "status_code": 202}, status_code=202)
+
+    except HTTPException as e:
+        existing = JOBS.get(job_id, {})
+        existing.update(
+            {
+                "status": "failure",
+                "stage": "failed",
+                "error": str(e.detail),
+                "elapsed_s": round(time.time() - t0, 2),
+                "finished_at": time.time(),
+            }
+        )
+        JOBS[job_id] = existing
+        logger.exception("JOB=%s ❌ failed: %s", job_id, str(e.detail))
+        return JSONResponse(
+            {"status": "failure", "status_code": e.status_code, "detail": e.detail},
+            status_code=e.status_code,
+        )
 
     except Exception as e:
         existing = JOBS.get(job_id, {})
@@ -536,4 +608,7 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
         )
         JOBS[job_id] = existing
         logger.exception("JOB=%s ❌ failed: %s", job_id, str(e))
-        return JSONResponse({"status": "failure", "status_code": 401}, status_code=401)
+        return JSONResponse(
+            {"status": "failure", "status_code": 500, "detail": str(e)},
+            status_code=500,
+        )
