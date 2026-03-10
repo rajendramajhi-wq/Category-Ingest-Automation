@@ -3,9 +3,8 @@
 category_ingest_service.py
 
 Features:
-- POST /ingest returns immediately (202 Accepted) with job_id
-- Background thread executes ingest_from_payload
-- GET /ingest/status/{job_id} to check received -> processing -> success/error
+- POST /ingest runs synchronously and returns only after the whole process finishes
+- Response body returns only final status: success or failure
 - Date-wise IST log folders:
     logs/YYYY-MM-DD/ingest.log
   Folder is created ONLY when the first ingest log is written that day.
@@ -430,119 +429,111 @@ def ingest_status(job_id: str):
 
 @app.post("/ingest")
 async def ingest(request: Request, x_api_key: Optional[str] = Header(default=None)):
-    _require_api_key(x_api_key)
+    t0 = time.time()
+    job_id = uuid.uuid4().hex
 
-    ct = (request.headers.get("content-type") or "").lower()
+    try:
+        _require_api_key(x_api_key)
 
-    payload: Dict[str, Any] = {}
+        ct = (request.headers.get("content-type") or "").lower()
+        payload: Dict[str, Any] = {}
 
-    if "application/json" in ct:
-        payload = await request.json()
-        if not isinstance(payload, dict):
-            raise HTTPException(status_code=400, detail="JSON body must be an object")
+        if "application/json" in ct:
+            payload = await request.json()
+            if not isinstance(payload, dict):
+                raise HTTPException(status_code=400, detail="JSON body must be an object")
 
-    elif "multipart/form-data" in ct:
-        form = await request.form()
-        payload = {k: _json_maybe(form.get(k)) for k in form.keys()}
+        elif "multipart/form-data" in ct:
+            form = await request.form()
+            payload = {k: _json_maybe(form.get(k)) for k in form.keys()}
 
-        upload = form.get("file") or form.get("csv")
-        if upload is not None:
-            file_bytes = await upload.read()
-            payload["categories"] = _rows_from_csv_bytes(file_bytes)
+            upload = form.get("file") or form.get("csv")
+            if upload is not None:
+                file_bytes = await upload.read()
+                payload["categories"] = _rows_from_csv_bytes(file_bytes)
 
-        if isinstance(payload.get("payload"), dict):
-            for k, v in payload["payload"].items():
-                payload.setdefault(k, v)
+            if isinstance(payload.get("payload"), dict):
+                for k, v in payload["payload"].items():
+                    payload.setdefault(k, v)
 
-    else:
-        raise HTTPException(status_code=415, detail=f"Unsupported Content-Type: {ct}")
+        else:
+            raise HTTPException(status_code=415, detail=f"Unsupported Content-Type: {ct}")
 
-    # create a job_id (reusing request_id if user sent it)
-    job_id = str(payload.get("request_id") or uuid.uuid4().hex)
-    payload["request_id"] = job_id  # helps your downstream filename suffix too
+        job_id = str(payload.get("request_id") or uuid.uuid4().hex)
+        payload["request_id"] = job_id
 
-    # normalize runtime options
-    opts: Dict[str, Any] = {
-        "env": str(payload.get("env") or "dev"),
-        "out_dir": str(payload.get("out_dir") or "out"),
-        "chunk_size": _parse_int(payload.get("chunk_size"), 40),
-        "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
-        "execute": _parse_bool(payload.get("execute"), default=False),
-        "backup": _parse_bool(payload.get("backup"), default=True),
-        "use_llm": _parse_bool(payload.get("use_llm"), default=True),
-    }
+        rows = payload.get("categories") or payload.get("grid")
+        row_count = len(rows) if isinstance(rows, list) else None
 
-    rows = payload.get("categories") or payload.get("grid")
-    row_count = len(rows) if isinstance(rows, list) else None
+        JOBS[job_id] = {
+            "status": "processing",
+            "stage": "ingest_from_payload",
+            "content_type": ct,
+            "rows": row_count,
+            "created_at": time.time(),
+            "started_at": time.time(),
+        }
 
-    # record job immediately
-    JOBS[job_id] = {
-        "status": "received",
-        "stage": "queued",
-        "content_type": ct,
-        "rows": row_count,
-        "created_at": time.time(),
-    }
+        logger.info("JOB=%s ✅ payload received; processing started (rows=%s)", job_id, row_count)
 
-    # FIRST log line for the day creates: logs/YYYY-MM-DD/ingest.log (IST)
-    logger.info("JOB=%s ✅ payload received; queued (rows=%s)", job_id, row_count)
+        analysis_type, mongo_uri = _pick_mongo_uri_from_payload(payload)
+        if analysis_type is not None and not mongo_uri:
+            raise HTTPException(
+                status_code=400,
+                detail=f"analysis_type={analysis_type} provided but no matching env var set. "
+                    f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_1/MONGO_URI_2)."
+            )
 
+        opts = {
+            "env": str(payload.get("env") or "dev"),
+            "out_dir": str(payload.get("out_dir") or "out"),
+            "chunk_size": _parse_int(payload.get("chunk_size"), 40),
+            "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
+            "execute": _parse_bool(payload.get("execute"), default=False),
+            "backup": _parse_bool(payload.get("backup"), default=True),
+            "use_llm": _parse_bool(payload.get("use_llm"), default=True),
+            "mongo_uri": mongo_uri,
+        }
 
+        JOBS[job_id]["analysis_type"] = analysis_type
+        JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
+        logger.info("JOB=%s analysis_type=%s mongo=%s", job_id, analysis_type, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
 
+        res = ingest_from_payload(payload, **opts)
 
-
-
-    # analysis_type, mongo_flag, mongo_uri = _pick_mongo_uri_from_payload(payload)
-    analysis_type, mongo_uri = _pick_mongo_uri_from_payload(payload)
-
-    # If they provided mongo_target but env var missing:
-    # if mongo_flag is not None and not mongo_uri:
-    #     raise HTTPException(
-    #         status_code=400,
-    #         detail=f"mongo_target={mongo_flag} provided but no matching env var set. "
-    #             f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_0/MONGO_URI_1)."
-    #     )
-
-    if analysis_type is not None and not mongo_uri:
-        raise HTTPException(
-            status_code=400,
-            detail=f"analysis_type={analysis_type} provided but no matching env var set. "
-                f"Set MONGO_URI_X/MONGO_URI_Y (or MONGO_URI_1/MONGO_URI_2)."
+        JOBS[job_id].update(
+            {
+                "status": "success",
+                "stage": "done",
+                "company_id": res.company_id,
+                "team_id": res.team_id,
+                "out_file": res.out_file,
+                "executed": bool(opts.get("execute", False)),
+                "elapsed_s": round(time.time() - t0, 2),
+                "finished_at": time.time(),
+            }
         )
+        logger.info(
+            "JOB=%s ✅ completed company_id=%s team_id=%s out_file=%s elapsed=%.2fs",
+            job_id,
+            res.company_id,
+            res.team_id,
+            res.out_file,
+            (time.time() - t0),
+        )
+        return JSONResponse({"status": "success", "status_code": 202}, status_code=202)
 
-    opts = {
-        "env": str(payload.get("env") or "dev"),
-        "out_dir": str(payload.get("out_dir") or "out"),
-        "chunk_size": _parse_int(payload.get("chunk_size"), 40),
-        "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
-        "execute": _parse_bool(payload.get("execute"), default=False),
-        "backup": _parse_bool(payload.get("backup"), default=True),
-        "use_llm": _parse_bool(payload.get("use_llm"), default=True),
-        "mongo_uri": mongo_uri,  # ✅ NEW
-    }
-
-    # optionally store in JOBS + logs
-    # JOBS[job_id]["mongo_target"] = mongo_flag
-    # JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
-    # logger.info("JOB=%s mongo_target=%s mongo=%s", job_id, mongo_flag, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
-
-
-    JOBS[job_id]["analysis_type"] = analysis_type
-    JOBS[job_id]["mongo"] = _redact_mongo_uri(mongo_uri) if mongo_uri else None
-    logger.info("JOB=%s analysis_type=%s mongo=%s", job_id, analysis_type, _redact_mongo_uri(mongo_uri) if mongo_uri else None)
-
-
-
-    # run job in a separate thread so status endpoint stays responsive
-    t = threading.Thread(target=_run_ingest_job, args=(job_id, payload, opts), daemon=True)
-    t.start()
-
-    return JSONResponse(
-        {
-            "status": "accepted",
-            "job_id": job_id,
-            "message": "payload received; processing started",
-            "status_endpoint": f"/ingest/status/{job_id}",
-        },
-        status_code=202,
-    )
+    except Exception as e:
+        existing = JOBS.get(job_id, {})
+        existing.update(
+            {
+                "status": "failure",
+                "stage": "failed",
+                "error": str(e),
+                "elapsed_s": round(time.time() - t0, 2),
+                "finished_at": time.time(),
+            }
+        )
+        JOBS[job_id] = existing
+        logger.exception("JOB=%s ❌ failed: %s", job_id, str(e))
+        return JSONResponse({"status": "failure", "status_code": 401}, status_code=401)
