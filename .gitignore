@@ -7,7 +7,7 @@
 
 
 *.log
-# *.txt
+*.txt
 *.json
 *.mongosh
 *.env

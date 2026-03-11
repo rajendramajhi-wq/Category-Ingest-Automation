@@ -190,7 +190,8 @@ def _pick_mongo_uri_from_payload(payload: dict) -> tuple[Optional[str], Optional
     if isinstance(direct, str) and direct.strip():
         return None, None, direct.strip()
 
-    code = _first_present(payload, ["code", "env_code", "envCode", "server_code", "serverCode"])
+    # code = _first_present(payload, ["code", "env_code", "envCode", "server_code", "serverCode"])
+    code = _first_present(payload, ["code", "env_code", "envCode", "server_code", "serverCode"]) or 2
     analysis_type = _first_present(
         payload,
         [
@@ -203,8 +204,8 @@ def _pick_mongo_uri_from_payload(payload: dict) -> tuple[Optional[str], Optional
         ],
     )
 
-    if code is None:
-        raise HTTPException(status_code=400, detail="code is required and must be 1 or 2")
+    # if code is None:
+    #     raise HTTPException(status_code=400, detail="code is required and must be 1 or 2")
 
     if analysis_type is None:
         raise HTTPException(status_code=400, detail="analysis_type is required and must be 1 or 2")
@@ -528,11 +529,11 @@ async def ingest(request: Request, x_api_key: Optional[str] = Header(default=Non
 
         opts = {
             "env": str(payload.get("env") or selected_env or "dev"),
+            # "env": str(payload.get("env") or selected_env or "prod"),
             "out_dir": str(payload.get("out_dir") or "out"),
             "chunk_size": _parse_int(payload.get("chunk_size"), 40),
             "model": str(payload.get("model") or os.environ.get("OPENAI_MODEL", "gpt-5")),
             "execute": _parse_bool(payload.get("execute"), default=False),
-            "backup": _parse_bool(payload.get("backup"), default=True),
             "use_llm": _parse_bool(payload.get("use_llm"), default=True),
             "mongo_uri": mongo_uri,
         }
