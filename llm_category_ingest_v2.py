@@ -24,12 +24,11 @@ import os
 import re
 import json
 import time
-import shutil
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 
 import logging
@@ -43,7 +42,12 @@ from pydantic import BaseModel, Field
 try:
     from openai import OpenAI  # type: ignore
 except Exception:
-    OpenAI = None  # allow running payload->mongosh without OpenAI installed
+    OpenAI = None  # allow running payload->DB without OpenAI installed
+
+try:
+    from pymongo import MongoClient  # type: ignore
+except Exception:
+    MongoClient = None  # allow running non-DB paths without pymongo installed
 
 
 # --------------------------
@@ -51,6 +55,11 @@ except Exception:
 # --------------------------
 
 REQUIRED_COLLECTIONS = ["live_calls", "sessions", "team_categories", "team_configs"]
+
+_MONGO_CLIENTS: Dict[str, Any] = {}
+_MONGO_CLIENTS_LOCK = Lock()
+_INDEX_READY: set[tuple[str, str]] = set()
+_INDEX_READY_LOCK = Lock()
 
 
 def generate_slug(s: str) -> str:
@@ -760,121 +769,101 @@ def build_team_categories(team_configs: Dict[str, Any], manager_id: Union[str, i
 
 
 # --------------------------
-# .mongosh writer + execution
+# PyMongo write helpers
 # --------------------------
 
-def to_pretty_js(obj: Any) -> str:
-    return json.dumps(obj, ensure_ascii=False, indent=2)
+def _get_mongo_client(uri: str):
+    if MongoClient is None:
+        raise ImportError("pymongo is not installed. Run: pip install pymongo")
+
+    key = (uri or "").strip()
+    if not key:
+        raise ValueError("mongo_uri is required for DB execution")
+
+    client = _MONGO_CLIENTS.get(key)
+    if client is not None:
+        return client
+
+    with _MONGO_CLIENTS_LOCK:
+        client = _MONGO_CLIENTS.get(key)
+        if client is not None:
+            return client
+        client = MongoClient(
+            key,
+            appname="category-ingest-service",
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=30000,
+            retryWrites=True,
+        )
+        _MONGO_CLIENTS[key] = client
+        return client
 
 
-def write_mongosh(
-    out_path: str,
+def _convert_iso_dates_inplace(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        for k, v in list(obj.items()):
+            if isinstance(v, (dict, list)):
+                _convert_iso_dates_inplace(v)
+            elif isinstance(v, str) and (k.endswith("_at") or k in ("created_at", "updated_at")):
+                try:
+                    obj[k] = datetime.fromisoformat(v.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+        return obj
+
+    if isinstance(obj, list):
+        for item in obj:
+            _convert_iso_dates_inplace(item)
+        return obj
+
+    return obj
+
+
+def _ensure_indexes_once(uri: str, db_name: str) -> None:
+    cache_key = (uri, db_name)
+    if cache_key in _INDEX_READY:
+        return
+
+    with _INDEX_READY_LOCK:
+        if cache_key in _INDEX_READY:
+            return
+
+        db = _get_mongo_client(uri)[db_name]
+        db.team_configs.create_index([("company_id", 1), ("team_id", 1)], unique=True, name="company_id_1_team_id_1")
+        db.team_categories.create_index([("company_id", 1), ("team_id", 1)], unique=True, name="company_id_1_team_id_1")
+        _INDEX_READY.add(cache_key)
+
+
+def upsert_with_pymongo(
+    *,
     company_id: str,
     team_id: str,
     team_configs: Dict[str, Any],
     team_categories: Dict[str, Any],
-    backup: bool = True,
-) -> None:
+    mongo_uri: str,
+) -> str:
+    uri = (mongo_uri or "").strip()
+    if not uri:
+        raise ValueError("mongo_uri is required when execute=True")
+
     db_name = resolve_db_name(company_id)
+    _ensure_indexes_once(uri, db_name)
+
+    db = _get_mongo_client(uri)[db_name]
     filt = {"company_id": str(company_id), "team_id": str(team_id)}
 
-    js: List[str] = []
-    js.append(f"use {db_name};")
-    js.append("")
+    team_configs_doc = _convert_iso_dates_inplace(json.loads(json.dumps(team_configs, ensure_ascii=False)))
+    team_categories_doc = _convert_iso_dates_inplace(json.loads(json.dumps(team_categories, ensure_ascii=False)))
 
-    js.append("// ensure required collections exist")
-    js.append(f'const required = {json.dumps(REQUIRED_COLLECTIONS)};')
-    js.append("const existing = db.getCollectionNames();")
-    js.append("for (const c of required) { if (!existing.includes(c)) db.createCollection(c); }")
-    js.append("")
-
-    js.append("// enforce uniqueness on (company_id, team_id)")
-    js.append("db.team_configs.createIndex({company_id:1, team_id:1}, {unique:true});")
-    js.append("db.team_categories.createIndex({company_id:1, team_id:1}, {unique:true});")
-    js.append("")
-
-    if backup:
-        js.append("// backup existing docs before overwrite")
-        js.append('if (!db.getCollectionNames().includes("team_configs_backup")) db.createCollection("team_configs_backup");')
-        js.append('if (!db.getCollectionNames().includes("team_categories_backup")) db.createCollection("team_categories_backup");')
-        js.append(f"const filt = {json.dumps(filt)};")
-        js.append("const oldTC = db.team_configs.findOne(filt);")
-        js.append("if (oldTC) { oldTC.backed_up_at = new Date(); db.team_configs_backup.insertOne(oldTC); }")
-        js.append("const oldTCat = db.team_categories.findOne(filt);")
-        js.append("if (oldTCat) { oldTCat.backed_up_at = new Date(); db.team_categories_backup.insertOne(oldTCat); }")
-        js.append("")
-
-    js.append("// upsert team_configs + team_categories")
-    js.append(f"const teamConfigs = {to_pretty_js(team_configs)};")
-    js.append(f"const teamCategories = {to_pretty_js(team_categories)};")
-    js.append("")
-
-    js.append("// convert *_at ISO strings to Date objects recursively")
-    js.append("function fixDates(obj){")
-    js.append('  if (!obj || typeof obj !== "object") return;')
-    js.append("  for (const k of Object.keys(obj)) {")
-    js.append("    const v = obj[k];")
-    js.append('    if ((k.endsWith(\"_at\") || k === \"created_at\" || k === \"updated_at\") && typeof v === \"string\") {')
-    js.append("      obj[k] = new Date(v);")
-    js.append("    } else if (v && typeof v === 'object') {")
-    js.append("      fixDates(v);")
-    js.append("    }")
-    js.append("  }")
-    js.append("}")
-    js.append("fixDates(teamConfigs);")
-    js.append("fixDates(teamCategories);")
-    js.append("")
-
-    js.append(f"db.team_configs.updateOne({json.dumps(filt)}, {{$set: teamConfigs}}, {{upsert:true}});")
-    js.append(f"db.team_categories.updateOne({json.dumps(filt)}, {{$set: teamCategories}}, {{upsert:true}});")
-    js.append('print(\"✅ Ingestion done for company_id=\" + teamConfigs.company_id + \" team_id=\" + teamConfigs.team_id);')
-
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(js))
-
-
-
-def execute_mongosh(env: str, out_file: str, mongo_uri: Optional[str] = None) -> None:
-    uri = (mongo_uri or "").strip() or os.environ.get(f"MONGO_URI_{env.upper()}") or os.environ.get("MONGO_URI")
-    if not uri:
-        raise ValueError(
-            f"Provide mongo_uri or set MONGO_URI_{env.upper()} (or MONGO_URI). "
-            f"Example: export MONGO_URI_DEV=mongodb://localhost:27017"
-        )
-
-    # ✅ log what we are ACTUALLY using (super useful for debugging)
-    print(f"[execute_mongosh] Using Mongo URI: {uri}")
-
-    # if shutil.which("mongosh"):
-    #     subprocess.run(["mongosh", uri, out_file], check=True)
-    #     return
-    
-    if shutil.which("mongosh"):
-        with open(out_file, "rb") as f:
-            subprocess.run(["mongosh", uri], stdin=f, check=True)
-        return
-
-    container = os.environ.get("MONGO_DOCKER_CONTAINER", "mongo-test")
-    if shutil.which("docker") is None:
-        raise FileNotFoundError("mongosh not found and docker not available. Install mongosh or run via Docker.")
-
-    # Translate localhost -> host.docker.internal but keep the port (27018 stays 27018)
-    docker_host = os.environ.get("MONGO_DOCKER_HOST", "host.docker.internal")
-    docker_uri = uri.replace("mongodb://localhost", f"mongodb://{docker_host}")
-    docker_uri = docker_uri.replace("mongodb://127.0.0.1", f"mongodb://{docker_host}")
-
-    with open(out_file, "rb") as f:
-        subprocess.run(
-            ["docker", "exec", "-i", container, "mongosh", docker_uri],
-            stdin=f,
-            check=True,
-        )
+    db.team_configs.update_one(filt, {"$set": team_configs_doc}, upsert=True)
+    db.team_categories.update_one(filt, {"$set": team_categories_doc}, upsert=True)
+    return db_name
 
 
 # --------------------------
 # Payload ingestion entry (importable)
 # --------------------------
-
 @dataclass
 class IngestResult:
     out_file: str
@@ -900,7 +889,6 @@ def ingest_from_payload(
     chunk_size: int = 25,
     model: str = "gpt-5",
     execute: bool = False,
-    backup: bool = True,
     use_llm: bool = True,
     mongo_uri: Optional[str] = None,
 ) -> IngestResult:
@@ -910,6 +898,7 @@ def ingest_from_payload(
         A) team_configs (object)  -> skip LLM
         B) grid (list) OR categories (list) -> build team_configs via LLM (unless use_llm=False)
     - Accepts team_id OR channel_id
+    - execute=True performs direct PyMongo upserts into team_configs and team_categories
     """
     company_id = _coalesce_str(payload.get("company_id"), payload.get("companyId"), payload.get("companyID"))
     team_id = _coalesce_str(payload.get("team_id"), payload.get("teamId"), payload.get("channel_id"), payload.get("channelId"))
@@ -917,8 +906,6 @@ def ingest_from_payload(
 
     if not company_id or not team_id or not manager_id:
         raise ValueError("payload must include company_id, team_id (or channel_id), and manager_id")
-
-    os.makedirs(out_dir, exist_ok=True)
 
     team_configs = payload.get("team_configs") or payload.get("teamConfigs")
     if team_configs:
@@ -962,37 +949,17 @@ def ingest_from_payload(
 
     team_categories = build_team_categories(team_configs, manager_id)
 
-    # Default: stable filename. If request_id exists, make it unique.
-    rid = sanitize_slug_underscore(str(payload.get("request_id", "")).strip())
-    suffix = f"_{rid}" if rid else ""
-    out_file = os.path.join(out_dir, f"ingest_company{company_id}_team{team_id}{suffix}.mongosh")
-
-    write_mongosh(out_file, company_id, team_id, team_configs, team_categories, backup=backup)
-
+    write_target = resolve_db_name(company_id)
     if execute:
-        execute_mongosh(env=env, out_file=out_file, mongo_uri=mongo_uri)
+        write_target = upsert_with_pymongo(
+            company_id=company_id,
+            team_id=team_id,
+            team_configs=team_configs,
+            team_categories=team_categories,
+            mongo_uri=(mongo_uri or "").strip(),
+        )
 
-    return IngestResult(out_file=out_file, company_id=company_id, team_id=team_id)
-
-
-# --------------------------
-# CLI entry (kept)
-# --------------------------
-
-import sys  # only used for --payload-stdin
-
-
-def _read_payload(payload_json: Optional[str], payload_stdin: bool) -> Optional[Dict[str, Any]]:
-    if not payload_json and not payload_stdin:
-        return None
-    if payload_json:
-        with open(payload_json, "r", encoding="utf-8") as f:
-            return json.load(f)
-    raw = sys.stdin.read()
-    if not raw.strip():
-        raise ValueError("--payload-stdin set but stdin is empty")
-    return json.loads(raw)
-
+    return IngestResult(out_file=write_target, company_id=company_id, team_id=team_id)
 
 def main(
     excel: str = typer.Argument(..., help='Excel/CSV path. Use "-" when sending payload via --payload-stdin.'),
@@ -1005,7 +972,6 @@ def main(
     chunk_size: int = typer.Option(25, "--chunk-size"),
     model: str = typer.Option(lambda: os.environ.get("OPENAI_MODEL", "gpt-5"), "--model"),
     execute: bool = typer.Option(True, "--execute/--no-execute"),
-    backup: bool = typer.Option(True, "--backup/--no-backup"),
     payload_json: Optional[str] = typer.Option(None, "--payload-json"),
     payload_stdin: bool = typer.Option(False, "--payload-stdin"),
     no_llm: bool = typer.Option(False, "--no-llm"),
@@ -1022,10 +988,9 @@ def main(
             chunk_size=chunk_size,
             model=model,
             execute=execute,
-            backup=backup,
             use_llm=not no_llm,
         )
-        print(f"✅ wrote: {res.out_file}")
+        print(f"✅ target DB: {res.out_file}")
         return
 
     df, cols = load_grid(excel, sheet=sheet)
@@ -1039,17 +1004,26 @@ def main(
     )
     team_categories = build_team_categories(team_configs, manager_id)
 
-    os.makedirs(out_dir, exist_ok=True)
-    out_file = os.path.join(out_dir, f"ingest_company{company_id}_team{team_id}.mongosh")
-    write_mongosh(out_file, company_id, team_id, team_configs, team_categories, backup=backup)
-    print(f"✅ wrote: {out_file}")
-
+    db_name = resolve_db_name(company_id)
     if not execute:
-        print("ℹ️ --no-execute set; not running mongosh")
+        print(f"ℹ️ --no-execute set; computed target DB: {db_name}")
         return
 
-    execute_mongosh(env=env, out_file=out_file)
-    print("✅ mongosh executed successfully")
+    mongo_uri = (os.environ.get(f"MONGO_URI_{env.upper()}") or os.environ.get("MONGO_URI") or "").strip()
+    if not mongo_uri:
+        raise ValueError(
+            f"Provide mongo_uri or set MONGO_URI_{env.upper()} (or MONGO_URI). "
+            f"Example: export MONGO_URI_DEV=mongodb://localhost:27017"
+        )
+
+    upsert_with_pymongo(
+        company_id=company_id,
+        team_id=team_id,
+        team_configs=team_configs,
+        team_categories=team_categories,
+        mongo_uri=mongo_uri,
+    )
+    print(f"✅ pymongo upsert completed in DB: {db_name}")
 
 
 if __name__ == "__main__":
